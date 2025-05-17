@@ -1,2 +1,53 @@
-.txt
+# Bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment
 .env
+.venv/
+env/
+venv/
+*.env
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test/output
+.coverage
+htmlcov/
+*.log
+*.sqlite3
+
+# Uvicorn reload/cache
+*.pid
+*.db
+*.json
+*.log
+
+# Cache
+*.cache
+*.bak
+
+# Pytest
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Zip backups
+*.zip
+*.tar.gz
+
+# Docker
+*.pid
+*.sock
+
+.txt
