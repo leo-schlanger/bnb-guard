@@ -1,9 +1,43 @@
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__) + "/.."))
-
 import requests
 from config import BSCSCAN_API_KEY
+
+def analyze_onchain(metadata: dict) -> dict:
+    result = {
+        "deployer_address": metadata.get("deployer_address"),
+        "deployer_token_count": metadata.get("deployer_token_count"),
+        "deployer_flagged": False,
+        "top_holder_concentration": None,
+        "lp_locked": False,
+        "lp_percent_locked": None,
+        "lp_info": metadata.get("lp_info", {}),
+        "warnings": []
+    }
+
+    # Detecta deployer suspeito
+    if metadata.get("deployer_token_count", 0) > 5:
+        result["deployer_flagged"] = True
+        result["warnings"].append("🚨 Deployer criou muitos tokens")
+
+    # Concentração de holders
+    holders = metadata.get("holders", [])
+    if holders:
+        top_5 = sorted(holders, key=lambda x: x["percent"], reverse=True)[:5]
+        total_top_5 = sum([h["percent"] for h in top_5])
+        result["top_holder_concentration"] = round(total_top_5, 2)
+        if total_top_5 > 50:
+            result["warnings"].append("⚠️ Top 5 holders possuem mais de 50% da supply")
+
+    # LP lock
+    lp_info = metadata.get("lp_info", {})
+    locked = lp_info.get("locked", False)
+    percent_locked = lp_info.get("percent_locked")
+    result["lp_locked"] = bool(locked)
+    result["lp_percent_locked"] = percent_locked
+
+    if not locked or (percent_locked is not None and percent_locked < 70):
+        result["warnings"].append("❌ LP não está devidamente travada (>70%)")
+
+    return result
 
 def get_deployer_address(contract_address):
     url = (

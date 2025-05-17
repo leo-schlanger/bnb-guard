@@ -1,31 +1,39 @@
-from services.web3 import get_pancake_router
-from web3 import Web3
-from web3.exceptions import ContractLogicError
-
-WBNB_ADDRESS = Web3.to_checksum_address("0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c")
-
-def simulate_buy_sell(token_address):
-    router = get_pancake_router()
-    token = Web3.to_checksum_address(token_address)
+def analyze_dynamic(simulation_result: dict) -> dict:
+    result = {
+        "buy_success": False,
+        "sell_success": False,
+        "buy_tax": None,
+        "sell_tax": None,
+        "buy_slippage": None,
+        "sell_slippage": None,
+        "honeypot_detected": False,
+        "error": None
+    }
 
     try:
-        amount_in_wei = Web3.to_wei(1, 'ether')
-        buy_path = [WBNB_ADDRESS, token]
-        sell_path = [token, WBNB_ADDRESS]
+        # Verifica se a simulação de compra foi bem-sucedida
+        result["buy_success"] = simulation_result.get("buy", {}).get("success", False)
+        result["sell_success"] = simulation_result.get("sell", {}).get("success", False)
 
-        buy_out = router.functions.getAmountsOut(amount_in_wei, buy_path).call()
-        sell_out = router.functions.getAmountsOut(amount_in_wei, sell_path).call()
+        # Honeypot = compra funciona, venda falha
+        result["honeypot_detected"] = result["buy_success"] and not result["sell_success"]
 
-        if not buy_out or not sell_out:
-            return ["⚠️ Falha ao simular compra ou venda"]
+        # Taxas e slippage reais
+        if result["buy_success"]:
+            expected_in = simulation_result["buy"].get("expected_amount_out")
+            received_in = simulation_result["buy"].get("amount_out")
+            if expected_in and received_in:
+                result["buy_tax"] = round(100 * (1 - (received_in / expected_in)), 2)
+                result["buy_slippage"] = round(100 * abs(received_in - expected_in) / expected_in, 2)
 
-        return []
-    except ContractLogicError:
-        # Erro de lógica no contrato indica possível honeypot
-        return ["❌ Erro de lógica no contrato — possível honeypot"]
+        if result["sell_success"]:
+            expected_out = simulation_result["sell"].get("expected_amount_out")
+            received_out = simulation_result["sell"].get("amount_out")
+            if expected_out and received_out:
+                result["sell_tax"] = round(100 * (1 - (received_out / expected_out)), 2)
+                result["sell_slippage"] = round(100 * abs(received_out - expected_out) / expected_out, 2)
+
     except Exception as e:
-        msg = str(e).lower()
-        # Se for “execution reverted”, também é honeypot
-        if 'execution reverted' in msg:
-            return ["❌ Erro de lógica no contrato — possível honeypot"]
-        return [f"❌ Erro durante simulação: {e}"]
+        result["error"] = str(e)
+
+    return result
