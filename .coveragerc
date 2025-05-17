@@ -1,0 +1,22 @@
+[run]
+branch = True
+source =
+    app
+
+omit =
+    */__init__.py
+    */schemas/*
+    */tests/*
+    config.py
+    main.py
+    conftest.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    raise NotImplementedError
+    except ImportError
+
+show_missing = True
+skip_covered = True

@@ -3,7 +3,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__) + "/.."))
 
 import pytest
-from utils.fetch_metadata import fetch_token_metadata
+from app.utils.fetch_metadata import fetch_token_metadata
 
 # Token real e conhecido da BNB (ou substitua por outro verificado no BscScan)
 VALID_TOKEN = "0xB8c77482e45F1F44de1745F52C74426C631bdd52"
