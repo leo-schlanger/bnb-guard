@@ -4,6 +4,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__) + "/.."))
 
 from fastapi import FastAPI
 from app.routes.analyze import router as analyze_router
+from app.routes.audit import router as audit_router
 
 app = FastAPI(
     title="BNBGuard API",
@@ -12,3 +13,4 @@ app = FastAPI(
 )
 
 app.include_router(analyze_router)
+app.include_router(audit_router)
