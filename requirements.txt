@@ -1,0 +1,6 @@
+requests
+web3
+pytest
+fastapi
+uvicorn
+httpx
