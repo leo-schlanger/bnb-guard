@@ -1,92 +1,92 @@
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__) + "/.."))
-
 import pytest
 from app.utils.analyze_dynamic import analyze_dynamic
-from web3.exceptions import ContractLogicError
 
-# --- Mock de sucesso ---
-class FakeGetAmountsOut:
-    def call(self):
-        return [1, 2]
+# ✅ Compra e venda com sucesso, taxas e slippage calculadas
+def test_analyze_dynamic_full_success():
+    data = {
+        "buy": {
+            "success": True,
+            "expected_amount_out": 100,
+            "amount_out": 95
+        },
+        "sell": {
+            "success": True,
+            "expected_amount_out": 100,
+            "amount_out": 90
+        }
+    }
+    result = analyze_dynamic(data)
+    assert result["buy_success"] is True
+    assert result["sell_success"] is True
+    assert result["honeypot_detected"] is False
+    assert result["buy_tax"] == 5.0
+    assert result["sell_tax"] == 10.0
+    assert result["buy_slippage"] == 5.0
+    assert result["sell_slippage"] == 10.0
+    assert result["error"] is None
 
-class FakeFunctions:
-    def getAmountsOut(self, amount, path):
-        return FakeGetAmountsOut()
+# ⚠️ Compra ok, venda falha (honeypot)
+def test_analyze_dynamic_buy_only():
+    data = {
+        "buy": {
+            "success": True,
+            "expected_amount_out": 200,
+            "amount_out": 180
+        },
+        "sell": {
+            "success": False
+        }
+    }
+    result = analyze_dynamic(data)
+    assert result["buy_success"] is True
+    assert result["sell_success"] is False
+    assert result["honeypot_detected"] is True
+    assert result["buy_tax"] == 10.0
+    assert result["sell_tax"] is None
 
-class FakeRouterSuccess:
-    functions = FakeFunctions()
+# ⚠️ Venda ok, compra falha (situação atípica)
+def test_analyze_dynamic_sell_only():
+    data = {
+        "buy": {
+            "success": False
+        },
+        "sell": {
+            "success": True,
+            "expected_amount_out": 1000,
+            "amount_out": 950
+        }
+    }
+    result = analyze_dynamic(data)
+    assert result["buy_success"] is False
+    assert result["sell_success"] is True
+    assert result["honeypot_detected"] is False
+    assert result["sell_tax"] == 5.0
+    assert result["buy_tax"] is None
 
-def test_analyze_dynamic_success(monkeypatch):
-    monkeypatch.setattr("app.utils.analyze_dynamic.get_pancake_router", lambda: FakeRouterSuccess())
-    result = analyze_dynamic("0x000000000000000000000000000000000000dEaD")
-    assert isinstance(result, list)
-    assert result == []
+# ⚠️ Nenhuma transação funcionou
+def test_analyze_dynamic_both_fail():
+    result = analyze_dynamic({
+        "buy": {"success": False},
+        "sell": {"success": False}
+    })
+    assert result["buy_success"] is False
+    assert result["sell_success"] is False
+    assert result["honeypot_detected"] is False
+    assert result["buy_tax"] is None
+    assert result["sell_tax"] is None
 
+# ⚠️ Valores ausentes (esperado ou recebido)
+def test_analyze_dynamic_missing_values():
+    data = {
+        "buy": {"success": True, "expected_amount_out": None, "amount_out": 90},
+        "sell": {"success": True, "expected_amount_out": 100, "amount_out": None}
+    }
+    result = analyze_dynamic(data)
+    assert result["buy_tax"] is None
+    assert result["sell_tax"] is None
 
-# --- ContractLogicError ---
-class FakeGetAmountsError:
-    def call(self):
-        raise ContractLogicError("reverted")
-
-class FakeFunctionsError:
-    def getAmountsOut(self, amount, path):
-        return FakeGetAmountsError()
-
-class FakeRouterLogicError:
-    functions = FakeFunctionsError()
-
-def test_analyze_dynamic_contract_logic_error(monkeypatch):
-    monkeypatch.setattr("app.utils.analyze_dynamic.get_pancake_router", lambda: FakeRouterLogicError())
-    result = analyze_dynamic("0x000000000000000000000000000000000000dEaD")
-    assert any("possível honeypot" in r.lower() for r in result)
-
-
-# --- Exception com “execution reverted” ---
-class FakeRouterExecReverted:
-    def __init__(self):
-        class ExecCall:
-            def call(self):
-                raise Exception("execution reverted: no data")
-        self.functions = type("F", (), {"getAmountsOut": lambda *args, **kwargs: ExecCall()})
-
-def test_analyze_dynamic_exec_reverted(monkeypatch):
-    monkeypatch.setattr("app.utils.analyze_dynamic.get_pancake_router", lambda: FakeRouterExecReverted())
-    result = analyze_dynamic("0x000000000000000000000000000000000000dEaD")
-    assert any("possível honeypot" in r.lower() for r in result)
-
-
-# --- Erro genérico ---
-class FailingCall:
-    def call(self):
-        raise RuntimeError("erro inesperado")
-
-class FailingFunctions:
-    def getAmountsOut(self, amount, path):
-        return FailingCall()
-
-class FakeRouterGenericFail:
-    functions = FailingFunctions()
-
-def test_analyze_dynamic_generic_error(monkeypatch):
-    monkeypatch.setattr("app.utils.analyze_dynamic.get_pancake_router", lambda: FakeRouterGenericFail())
-    result = analyze_dynamic("0x000000000000000000000000000000000000dEaD")
-    assert any("erro durante simulação" in r.lower() for r in result)
-
-
-# --- Retorno vazio ---
-class FailingCallEmpty:
-    def call(self):
-        return []
-
-class EmptyResponseRouter:
-    class Functions:
-        def getAmountsOut(self, amount, path):
-            return FailingCallEmpty()
-    functions = Functions()
-
-def test_analyze_dynamic_returns_empty(monkeypatch):
-    monkeypatch.setattr("app.utils.analyze_dynamic.get_pancake_router", lambda: EmptyResponseRouter())
-    result = analyze_dynamic("0x000000000000000000000000000000000000dEaD")
-    assert any("falha ao simular" in r.lower() for r in result)
+# ❌ Erro inesperado (simula KeyError interno)
+def test_analyze_dynamic_with_exception():
+    result = analyze_dynamic("string que quebra")  # deveria ser dict
+    assert result["error"] is not None
+    assert isinstance(result["error"], str)

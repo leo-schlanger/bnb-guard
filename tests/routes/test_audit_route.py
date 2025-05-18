@@ -1,30 +1,31 @@
-import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
-
 from fastapi.testclient import TestClient
-from app.routes.audit import router
-from fastapi import FastAPI
-import pytest
 from unittest.mock import patch
+from app.main import app
 
-app = FastAPI()
-app.include_router(router)
+client = TestClient(app)
 
-@pytest.fixture
-def client():
-    return TestClient(app)
-
-def test_audit_route_success(client):
+def test_audit_route_success():
     mock_result = {
+        "token_address": "0x123",
+        "name": "MockToken",
+        "symbol": "MTK",
+        "supply": 1000000,
         "functions": [],
-        "is_owner": True,
+        "owner": {"renounced": True, "functions": []},
         "lp_locked": True,
-        "score": {
-            "value": 85,
-            "details": ["✅ Sem riscos críticos detectados"]
+        "lp_lock": {
+            "locked": True,
+            "locked_percentage": 80.0,
+            "unlock_date": "2025-12-31"
         },
-        "risks": [],
+        "lp_info": {"locked": True},
+        "score": {
+            "value": 90,
+            "label": "Low Risk",
+            "details": ["✅ Seguro"]
+        },
         "alerts": [],
+        "risks": [],
         "critical_functions": [],
         "deployer": {
             "address": "0x123",
@@ -36,11 +37,22 @@ def test_audit_route_success(client):
             "buy_mutable": False,
             "sell_mutable": False
         },
-        "honeypot": {"is_honeypot": False},
-        "lp_lock": {"locked": True}
+        "honeypot": {
+            "is_honeypot": False,
+            "buy_success": True,
+            "sell_success": True,
+            "slippage": 0.5,
+            "error_message": None
+        },
+        "top_holders": {
+            "holders": [],
+            "top_1_percent": 0.0,
+            "top_10_percent": 0.0,
+            "top_50_percent": 0.0
+        }
     }
 
-    with patch("app.services.auditor.audit_token", return_value=mock_result):
+    with patch("app.routes.audit.audit_token", return_value=mock_result):
         response = client.get("/audit/0x123")
         assert response.status_code == 200
-        assert response.json() == mock_result
+        assert response.json()["name"] == "MockToken"

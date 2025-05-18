@@ -13,12 +13,12 @@ def analyze_onchain(metadata: dict) -> dict:
         "warnings": []
     }
 
-    # Detecta deployer suspeito
+    # 🚨 Detecta deployer suspeito
     if metadata.get("deployer_token_count", 0) > 5:
         result["deployer_flagged"] = True
         result["warnings"].append("🚨 Deployer criou muitos tokens")
 
-    # Concentração de holders
+    # 📊 Concentração de holders
     holders = metadata.get("holders", [])
     if holders:
         top_5 = sorted(holders, key=lambda x: x["percent"], reverse=True)[:5]
@@ -27,14 +27,24 @@ def analyze_onchain(metadata: dict) -> dict:
         if total_top_5 > 50:
             result["warnings"].append("⚠️ Top 5 holders possuem mais de 50% da supply")
 
-    # LP lock
+    # 🔒 Verificação de LP lock dinâmica
     lp_info = metadata.get("lp_info", {})
-    locked = lp_info.get("locked", False)
-    percent_locked = lp_info.get("percent_locked")
-    result["lp_locked"] = bool(locked)
-    result["lp_percent_locked"] = percent_locked
+    lp_percent_locked = lp_info.get("percent_locked")
+    lp_address = lp_info.get("address")
 
-    if not locked or (percent_locked is not None and percent_locked < 70):
+    # Chamada real à is_lp_locked
+    if lp_address:
+        try:
+            result["lp_locked"] = is_lp_locked(lp_address)
+        except Exception as e:
+            print(f"⚠️ Erro ao verificar is_lp_locked: {e}")
+            result["lp_locked"] = False
+    else:
+        result["lp_locked"] = False
+
+    result["lp_percent_locked"] = lp_percent_locked
+
+    if not result["lp_locked"] or (lp_percent_locked is not None and lp_percent_locked < 70):
         result["warnings"].append("❌ LP não está devidamente travada (>70%)")
 
     return result

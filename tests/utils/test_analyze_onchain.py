@@ -129,18 +129,167 @@ def test_lp_locked_invalid_result(monkeypatch):
         is_lp_locked("0xLP")
 
 
-# --- NOVO: Teste da função analyze_onchain ---
+# --- Teste da função analyze_onchain ---
 def test_analyze_onchain_success(monkeypatch):
+    # Mocks das funções internas
     monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xDEADBEEF")
-    monkeypatch.setattr("app.utils.analyze_onchain.get_holder_distribution", lambda token: {
-        "top5_percentage": 90.0,
-        "holders": [{"address": "0x1", "percentage": "90.00%"}]
-    })
-    monkeypatch.setattr("app.utils.analyze_onchain.is_lp_locked", lambda lp: True)
+    monkeypatch.setattr("app.utils.analyze_onchain.is_lp_locked", lambda address: True)
 
-    result = analyze_onchain("0xTOKEN")
+    metadata = {
+        "deployer_address": "0xDEADBEEF",
+        "deployer_token_count": 1,
+        "lp_info": {
+            "address": "0x1fE80fC86816B778B529D3C2a3830e44A6519A25"
+        },
+        "holders": [
+            {"address": "0x1", "percent": 90.0}
+        ]
+    }
 
-    assert result["deployer"]["address"] == "0xDEADBEEF"
-    assert isinstance(result["deployer"]["token_history"], list)
-    assert result["lp_info"]["locked"] is True
-    assert result["holders"][0]["address"] == "0x1"
+    result = analyze_onchain(metadata)
+
+    assert result["deployer_address"] == "0xDEADBEEF"
+    assert result["deployer_token_count"] == 1
+    assert result["lp_locked"] is True
+    assert result["top_holder_concentration"] == 90.0
+    assert isinstance(result["lp_info"], dict)
+    assert result["lp_info"]["address"] == "0x1fE80fC86816B778B529D3C2a3830e44A6519A25"
+    assert result["warnings"] == ["⚠️ Top 5 holders possuem mais de 50% da supply"]
+
+def test_analyze_onchain_deployer_flagged(monkeypatch):
+    monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xSPAM")
+    monkeypatch.setattr("app.utils.analyze_onchain.is_lp_locked", lambda address: False)
+
+    metadata = {
+        "deployer_address": "0xSPAM",
+        "deployer_token_count": 10,  # > 5 ➜ ativa o warning
+        "lp_info": {"address": "0x123"},
+        "holders": []
+    }
+
+    result = analyze_onchain(metadata)
+
+    assert result["deployer_flagged"] is True
+    assert "🚨 Deployer criou muitos tokens" in result["warnings"]
+
+def test_analyze_onchain_lp_not_locked(monkeypatch):
+    monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xDEAD")
+    monkeypatch.setattr("app.utils.analyze_onchain.is_lp_locked", lambda address: False)
+
+    metadata = {
+        "deployer_address": "0xDEAD",
+        "deployer_token_count": 1,
+        "lp_info": {
+            "address": "0x123",
+            "locked": False,
+            "percent_locked": 50.0
+        },
+        "holders": []
+    }
+
+    result = analyze_onchain(metadata)
+
+    assert result["lp_locked"] is False
+    assert result["lp_percent_locked"] == 50.0
+    assert "❌ LP não está devidamente travada (>70%)" in result["warnings"]
+
+def test_analyze_onchain_missing_lp_info(monkeypatch):
+    monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xDEAD")
+    monkeypatch.setattr("app.utils.analyze_onchain.is_lp_locked", lambda address: False)
+
+    metadata = {
+        "deployer_address": "0xDEAD",
+        "deployer_token_count": 1,
+        "holders": []
+    }
+
+    result = analyze_onchain(metadata)
+
+    assert result["lp_locked"] is False
+    assert "❌ LP não está devidamente travada (>70%)" in result["warnings"]
+
+def test_analyze_onchain_lp_not_locked(monkeypatch):
+    monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xDEAD")
+    monkeypatch.setattr("app.utils.analyze_onchain.is_lp_locked", lambda address: False)
+
+    metadata = {
+        "deployer_address": "0xDEAD",
+        "deployer_token_count": 1,
+        "lp_info": {
+            "address": "0x123",
+            "locked": False,
+            "percent_locked": 100.0  # LP está destravada, mesmo com porcentagem alta
+        },
+        "holders": []
+    }
+
+    result = analyze_onchain(metadata)
+
+    assert result["lp_locked"] is False
+    assert result["lp_percent_locked"] == 100.0
+    assert "❌ LP não está devidamente travada (>70%)" in result["warnings"]
+
+def test_analyze_onchain_is_lp_locked_exception(monkeypatch):
+    # Gera exceção ao chamar is_lp_locked
+    monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xDEAD")
+    monkeypatch.setattr("app.utils.analyze_onchain.is_lp_locked", lambda address: (_ for _ in ()).throw(Exception("Erro simulado")))
+
+    metadata = {
+        "deployer_address": "0xDEAD",
+        "deployer_token_count": 1,
+        "lp_info": {
+            "address": "0x123",
+            "percent_locked": 10.0
+        },
+        "holders": []
+    }
+
+    result = analyze_onchain(metadata)
+
+    assert result["lp_locked"] is False
+    assert "❌ LP não está devidamente travada (>70%)" in result["warnings"]
+
+def test_analyze_onchain_no_holders(monkeypatch):
+    monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xNOHOLDER")
+    monkeypatch.setattr("app.utils.analyze_onchain.is_lp_locked", lambda address: True)
+
+    metadata = {
+        "deployer_address": "0xNOHOLDER",
+        "deployer_token_count": 1,
+        "lp_info": {
+            "address": "0x1fE80fC86816B778B529D3C2a3830e44A6519A25",
+            "percent_locked": 90.0
+        },
+        "holders": []  # <- cobertura do "if holders" == False
+    }
+
+    result = analyze_onchain(metadata)
+
+    assert result["top_holder_concentration"] is None
+    assert result["lp_locked"] is True
+    assert "⚠️ Top 5 holders possuem mais de 50%" not in result["warnings"]
+
+def test_analyze_onchain_low_holder_concentration(monkeypatch):
+    monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xDEADBEEF")
+    monkeypatch.setattr("app.utils.analyze_onchain.is_lp_locked", lambda address: True)
+
+    metadata = {
+        "deployer_address": "0xDEADBEEF",
+        "deployer_token_count": 2,
+        "lp_info": {
+            "address": "0x1fE80fC86816B778B529D3C2a3830e44A6519A25",
+            "percent_locked": 90.0
+        },
+        "holders": [
+            {"address": "0x1", "percent": 20.0},
+            {"address": "0x2", "percent": 10.0},
+            {"address": "0x3", "percent": 10.0},
+            {"address": "0x4", "percent": 5.0},
+            {"address": "0x5", "percent": 4.0},
+        ]
+    }
+
+    result = analyze_onchain(metadata)
+
+    assert result["top_holder_concentration"] == 49.0
+    assert "⚠️ Top 5 holders possuem mais de 50% da supply" not in result["warnings"]
