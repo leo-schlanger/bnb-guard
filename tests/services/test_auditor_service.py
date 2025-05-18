@@ -57,7 +57,7 @@ def test_audit_token_full(monkeypatch):
         "lp_percent_locked": 20.0,
         "deployer_flagged": True,
         "deployer_token_count": 6,
-        "warnings": ["🚨 Deployer criou muitos tokens"]
+        "warnings": ["🚨 Deployer created many tokens"]
     })
 
     monkeypatch.setattr("app.services.auditor.calculate_risk_score", lambda *_: {
@@ -71,39 +71,39 @@ def test_audit_token_full(monkeypatch):
     assert result["name"] == "ScamToken"
 
 def test_audit_token_with_exception(monkeypatch):
-    # Força erro no fetch_token_metadata
-    monkeypatch.setattr("app.services.auditor.fetch_token_metadata", lambda address: (_ for _ in ()).throw(Exception("Erro forçado")))
+    # Force error in fetch_token_metadata
+    monkeypatch.setattr("app.services.auditor.fetch_token_metadata", lambda address: (_ for _ in ()).throw(Exception("Simulated error")))
 
-    result = audit_token("0xERRO")
+    result = audit_token("0xERROR")
 
-    assert result["name"] == "Erro"
+    assert result["name"] == "Error"
     assert result["score"]["value"] == 0
     assert result["honeypot"]["error_message"]
     assert "❌" in result["score"]["details"][0]
 
 def test_audit_token_raises(monkeypatch):
     def fake_fetch(*args, **kwargs):
-        raise Exception("Erro audit")
+        raise Exception("Audit error")
     
     monkeypatch.setattr("app.services.auditor.fetch_token_metadata", fake_fetch)
 
     result = audit_token("0x456")
-    assert result["name"] == "Erro"
+    assert result["name"] == "Error"
     assert result["score"]["value"] == 0
-    assert "Erro ao processar token" in result["score"]["details"][0]
+    assert "❌ Error processing token" in result["score"]["details"][0]
 
 
 def test_audit_token_exception(monkeypatch):
     def raise_error(address):
-        raise Exception("Erro forçado no fetch")
+        raise Exception("Forced fetch error")
 
     monkeypatch.setattr("app.services.auditor.fetch_token_metadata", raise_error)
 
     result = audit_token("0xBEEF")
-    assert result["name"] == "Erro"
+    assert result["name"] == "Error"
     assert result["symbol"] == "ERR"
     assert result["score"]["value"] == 0
-    assert "❌ Erro ao processar token" in result["score"]["details"][0]
+    assert "❌ Error processing token" in result["score"]["details"][0]
 
 def test_audit_token_with_lp(monkeypatch):
     monkeypatch.setattr("app.services.auditor.fetch_token_metadata", lambda address: {

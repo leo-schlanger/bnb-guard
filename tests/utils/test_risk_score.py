@@ -20,7 +20,7 @@ def test_high_risk_token():
 
     result = calculate_risk_score(static, dynamic, onchain)
     assert result["risk_score"] <= 40
-    assert result["grade"] == "🟥 Altíssimo Risco"
+    assert result["grade"] == "🔴 Extreme Risk"
 
 
 def test_safe_token():
@@ -36,10 +36,10 @@ def test_safe_token():
 
     result = calculate_risk_score(static, dynamic, onchain)
     assert result["risk_score"] == 100
-    assert result["grade"] == "🟩 Baixo Risco"
+    assert result["grade"] == "🟢 Low Risk"
 
 
-def test_score_seguro():
+def test_safe_token_grade():
     static = {"functions": [], "owner": {"renounced": True}}
     dynamic = {
         "fees": {"buy": 0, "sell": 0, "buy_mutable": False, "sell_mutable": False},
@@ -52,10 +52,10 @@ def test_score_seguro():
 
     result = calculate_risk_score(static, dynamic, onchain)
     assert result["risk_score"] == 100
-    assert result["grade"] == "🟩 Baixo Risco"
+    assert result["grade"] == "🟢 Low Risk"
 
 
-def test_score_moderado():
+def test_moderate_risk_grade():
     static = {
         "functions": [{"name": "setFee"}] * 7,
         "owner": {"renounced": False}
@@ -66,10 +66,10 @@ def test_score_moderado():
         {"lp_info": {"locked": True}, "deployer": {"token_history": []}}
     )
     assert 61 <= result["risk_score"] < 81
-    assert result["grade"] == "🟨 Risco Moderado"
+    assert result["grade"] == "🟡 Moderate Risk"
 
 
-def test_score_arriscado():
+def test_high_risk_grade():
     static = {
         "functions": [{"name": "mint"}] * 4,
         "owner": {"renounced": False}
@@ -80,10 +80,10 @@ def test_score_arriscado():
         {"lp_info": {"locked": False}, "deployer": {"token_history": []}}
     )
     assert 31 <= result["risk_score"] <= 60
-    assert result["grade"] == "🟧 Risco Alto"
+    assert result["grade"] == "🟠 High Risk"
 
 
-def test_score_perigoso():
+def test_extreme_risk_grade():
     static = {
         "functions": [{"name": "blacklist"}],
         "owner": {"renounced": False}
@@ -99,10 +99,10 @@ def test_score_perigoso():
 
     result = calculate_risk_score(static, dynamic, onchain)
     assert result["risk_score"] <= 30
-    assert result["grade"] == "🟥 Altíssimo Risco"
+    assert result["grade"] == "🔴 Extreme Risk"
 
 
-def test_score_nunca_negativo():
+def test_score_never_negative():
     static = {
         "functions": [{"name": "mint"}] * 10,
         "owner": {"renounced": False}
@@ -115,7 +115,7 @@ def test_score_nunca_negativo():
     assert result["risk_score"] >= 0
 
 
-def test_status_moderado():
+def test_moderate_risk_status():
     static = {
         "functions": [{"name": "anything"}] * 7,
         "owner": {"renounced": False}
@@ -125,10 +125,10 @@ def test_status_moderado():
         {"fees": {}, "honeypot": {}},
         {"lp_info": {"locked": True}, "deployer": {"token_history": []}}
     )
-    assert result["grade"] == "🟨 Risco Moderado"
+    assert result["grade"] == "🟡 Moderate Risk"
 
 
-def test_status_arriscado():
+def test_high_risk_status():
     static = {
         "functions": [{"name": "setFee"}] * 8,
         "owner": {"renounced": False}
@@ -138,10 +138,10 @@ def test_status_arriscado():
         {"fees": {}, "honeypot": {}},
         {"lp_info": {"locked": False}, "deployer": {"token_history": []}}
     )
-    assert result["grade"] == "🟧 Risco Alto"
+    assert result["grade"] == "🟠 High Risk"
 
 
-def test_alert_lp_unlock_affects_score():
+def test_lp_unlock_affects_score():
     static = {"functions": [], "owner": {"renounced": True}}
     result = calculate_risk_score(
         static,

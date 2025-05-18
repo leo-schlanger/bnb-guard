@@ -9,7 +9,7 @@ from app.utils.analyze_onchain import (
     analyze_onchain
 )
 
-# 🔧 Utilitário de mock genérico corrigido
+# 🔧 Fixed generic mock utility
 def fake_response(json_data, ok=True, status_code=200):
     class _Fake:
         def __init__(self):
@@ -23,7 +23,7 @@ def fake_response(json_data, ok=True, status_code=200):
     return _Fake()
 
 
-# --- TESTE REAL (opcional) ---
+# --- REAL TEST (optional) ---
 @pytest.mark.skip(reason="Teste real pode falhar por instabilidade externa")
 def test_get_deployer_address_real():
     token = "0xe9e7cea3dedca5984780bafc599bd69add087d56"
@@ -31,7 +31,7 @@ def test_get_deployer_address_real():
     assert result.startswith("0x") and len(result) == 42
 
 
-# --- MOCKS DE get_deployer_address ---
+# --- get_deployer_address MOCKS ---
 def test_get_deployer_address_mock_success(monkeypatch):
     monkeypatch.setattr(
         "app.utils.analyze_onchain.requests.get",
@@ -57,7 +57,7 @@ def test_get_deployer_address_http_error(monkeypatch):
         get_deployer_address("0x123")
 
 
-# --- MOCKS DE get_holder_distribution ---
+# --- get_holder_distribution MOCKS ---
 def test_get_holder_distribution_success(monkeypatch):
     monkeypatch.setattr(
         "app.utils.analyze_onchain.requests.get",
@@ -93,7 +93,7 @@ def test_get_holder_distribution_result_none(monkeypatch):
         get_holder_distribution("0x123")
 
 
-# --- MOCKS DE is_lp_locked ---
+# --- is_lp_locked MOCKS ---
 def test_lp_locked_true(monkeypatch):
     monkeypatch.setattr(
         "app.utils.analyze_onchain.requests.get",
@@ -129,9 +129,8 @@ def test_lp_locked_invalid_result(monkeypatch):
         is_lp_locked("0xLP")
 
 
-# --- Teste da função analyze_onchain ---
+# --- Test analyze_onchain function ---
 def test_analyze_onchain_success(monkeypatch):
-    # Mocks das funções internas
     monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xDEADBEEF")
     monkeypatch.setattr("app.utils.analyze_onchain.is_lp_locked", lambda address: True)
 
@@ -154,7 +153,7 @@ def test_analyze_onchain_success(monkeypatch):
     assert result["top_holder_concentration"] == 90.0
     assert isinstance(result["lp_info"], dict)
     assert result["lp_info"]["address"] == "0x1fE80fC86816B778B529D3C2a3830e44A6519A25"
-    assert result["warnings"] == ["⚠️ Top 5 holders possuem mais de 50% da supply"]
+    assert result["alerts"] == ["⚠️ Top 5 holders hold more than 50% of supply"]
 
 def test_analyze_onchain_deployer_flagged(monkeypatch):
     monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xSPAM")
@@ -162,7 +161,7 @@ def test_analyze_onchain_deployer_flagged(monkeypatch):
 
     metadata = {
         "deployer_address": "0xSPAM",
-        "deployer_token_count": 10,  # > 5 ➜ ativa o warning
+        "deployer_token_count": 10,
         "lp_info": {"address": "0x123"},
         "holders": []
     }
@@ -170,7 +169,7 @@ def test_analyze_onchain_deployer_flagged(monkeypatch):
     result = analyze_onchain(metadata)
 
     assert result["deployer_flagged"] is True
-    assert "🚨 Deployer criou muitos tokens" in result["warnings"]
+    assert "🚨 Deployer created many tokens" in result["alerts"]
 
 def test_analyze_onchain_lp_not_locked(monkeypatch):
     monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xDEAD")
@@ -191,7 +190,7 @@ def test_analyze_onchain_lp_not_locked(monkeypatch):
 
     assert result["lp_locked"] is False
     assert result["lp_percent_locked"] == 50.0
-    assert "❌ LP não está devidamente travada (>70%)" in result["warnings"]
+    assert "❌ LP is not properly locked (>70%)" in result["alerts"]
 
 def test_analyze_onchain_missing_lp_info(monkeypatch):
     monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xDEAD")
@@ -206,7 +205,7 @@ def test_analyze_onchain_missing_lp_info(monkeypatch):
     result = analyze_onchain(metadata)
 
     assert result["lp_locked"] is False
-    assert "❌ LP não está devidamente travada (>70%)" in result["warnings"]
+    assert "❌ LP is not properly locked (>70%)" in result["alerts"]
 
 def test_analyze_onchain_lp_not_locked(monkeypatch):
     monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xDEAD")
@@ -218,7 +217,7 @@ def test_analyze_onchain_lp_not_locked(monkeypatch):
         "lp_info": {
             "address": "0x123",
             "locked": False,
-            "percent_locked": 100.0  # LP está destravada, mesmo com porcentagem alta
+            "percent_locked": 100.0
         },
         "holders": []
     }
@@ -227,10 +226,9 @@ def test_analyze_onchain_lp_not_locked(monkeypatch):
 
     assert result["lp_locked"] is False
     assert result["lp_percent_locked"] == 100.0
-    assert "❌ LP não está devidamente travada (>70%)" in result["warnings"]
+    assert "❌ LP is not properly locked (>70%)" in result["alerts"]
 
 def test_analyze_onchain_is_lp_locked_exception(monkeypatch):
-    # Gera exceção ao chamar is_lp_locked
     monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xDEAD")
     monkeypatch.setattr("app.utils.analyze_onchain.is_lp_locked", lambda address: (_ for _ in ()).throw(Exception("Erro simulado")))
 
@@ -247,7 +245,7 @@ def test_analyze_onchain_is_lp_locked_exception(monkeypatch):
     result = analyze_onchain(metadata)
 
     assert result["lp_locked"] is False
-    assert "❌ LP não está devidamente travada (>70%)" in result["warnings"]
+    assert "❌ LP is not properly locked (>70%)" in result["alerts"]
 
 def test_analyze_onchain_no_holders(monkeypatch):
     monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xNOHOLDER")
@@ -260,14 +258,14 @@ def test_analyze_onchain_no_holders(monkeypatch):
             "address": "0x1fE80fC86816B778B529D3C2a3830e44A6519A25",
             "percent_locked": 90.0
         },
-        "holders": []  # <- cobertura do "if holders" == False
+        "holders": []
     }
 
     result = analyze_onchain(metadata)
 
     assert result["top_holder_concentration"] is None
     assert result["lp_locked"] is True
-    assert "⚠️ Top 5 holders possuem mais de 50%" not in result["warnings"]
+    assert "⚠️ Top 5 holders hold more than 50% of supply" not in result["alerts"]
 
 def test_analyze_onchain_low_holder_concentration(monkeypatch):
     monkeypatch.setattr("app.utils.analyze_onchain.get_deployer_address", lambda token: "0xDEADBEEF")
@@ -292,4 +290,4 @@ def test_analyze_onchain_low_holder_concentration(monkeypatch):
     result = analyze_onchain(metadata)
 
     assert result["top_holder_concentration"] == 49.0
-    assert "⚠️ Top 5 holders possuem mais de 50% da supply" not in result["warnings"]
+    assert "⚠️ Top 5 holders hold more than 50% of supply" not in result["alerts"]

@@ -49,41 +49,40 @@ def test_analyze_token_minimal(monkeypatch):
     assert result["name"] == "MockToken"
 
 def test_analyze_token_with_exception(monkeypatch):
-    # Força um erro no fetch_token_metadata
-    monkeypatch.setattr("app.services.analyzer.fetch_token_metadata", lambda address: (_ for _ in ()).throw(Exception("Erro simulado")))
+    monkeypatch.setattr("app.services.analyzer.fetch_token_metadata", lambda address: (_ for _ in ()).throw(Exception("Simulated error")))
 
-    result = analyze_token("0xERRO")
+    result = analyze_token("0xERROR")
 
-    assert result["name"] == "Erro"
+    assert result["name"] == "Error"
     assert result["score"]["value"] == 0
     assert result["risks"]
-    assert result["risks"][0].startswith("❌ Erro ao processar token")
+    assert result["risks"][0].startswith("❌ Error processing token")
 
 def test_analyze_token_raises(monkeypatch):
     def fake_fetch(*args, **kwargs):
-        raise Exception("Erro forçado")
+        raise Exception("Forced error")
     
     monkeypatch.setattr("app.services.analyzer.fetch_token_metadata", fake_fetch)
 
     result = analyze_token("0x123")
-    assert result["name"] == "Erro"
+    assert result["name"] == "Error"
     assert result["score"]["value"] == 0
-    assert "Erro ao processar token" in result["risks"][0]
+    assert "❌ Error processing token" in result["risks"][0]
 
 def test_analyze_token_exception(monkeypatch):
     def raise_error(address):
-        raise Exception("Erro forçado no fetch")
+        raise Exception("Forced fetch error")
 
     monkeypatch.setattr("app.services.analyzer.fetch_token_metadata", raise_error)
 
     result = analyze_token("0xFAIL")
-    assert result["name"] == "Erro"
+    assert result["name"] == "Error"
     assert result["symbol"] == "ERR"
     assert result["score"]["value"] == 0
-    assert "❌ Erro ao processar token" in result["risks"][0]
+    assert "❌ Error processing token" in result["risks"][0]
 
 def test_analyze_token_with_lp(monkeypatch):
-    # 🧪 Simula metadados mínimos com LP
+    # 🧪 Simulate minimal metadata with LP
     monkeypatch.setattr("app.services.analyzer.fetch_token_metadata", lambda address: {
         "name": "LPLocked",
         "symbol": "LPL",

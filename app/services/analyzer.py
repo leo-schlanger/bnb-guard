@@ -6,17 +6,17 @@ from utils.risk_score import calculate_risk_score
 
 def analyze_token(token_address, lp_token_address=None):
     try:
-        # 📦 Coleta metadados
+        # 📦 Fetch metadata
         metadata = fetch_token_metadata(token_address)
         source = metadata.get("SourceCode", "")
 
-        # 🧠 Análise Estática
+        # 🧠 Static Analysis
         static_alerts = analyze_static(source)
 
-        # 🔁 Análise Dinâmica
+        # 🔁 Dynamic Analysis
         dynamic_alerts = analyze_dynamic(token_address)
 
-        # 🔗 Análise On-chain
+        # 🔗 On-chain Analysis
         metadata["lp_info"] = {
             "locked": False,
             "percent_locked": None
@@ -27,7 +27,7 @@ def analyze_token(token_address, lp_token_address=None):
 
         onchain_alerts = analyze_onchain(metadata)
 
-        # 🧮 Score final
+        # 🧮 Final Score
         final = calculate_risk_score(static_alerts, dynamic_alerts, onchain_alerts)
 
         return {
@@ -59,17 +59,17 @@ def analyze_token(token_address, lp_token_address=None):
     except Exception as e:
         return {
             "token_address": token_address,
-            "name": "Erro",
+            "name": "Error",
             "symbol": "ERR",
             "supply": 0,
             "score": {
                 "value": 0,
-                "label": "Erro"
+                "label": "Error"
             },
             "honeypot": {"is_honeypot": False},
             "fees": {"buy": 0, "sell": 0},
             "lp_lock": {"locked": False},
             "owner": {"renounced": False},
             "top_holders": [],
-            "risks": [f"❌ Erro ao processar token: {str(e)}"]
+            "risks": [f"❌ Error processing token: {str(e)}"]
         }

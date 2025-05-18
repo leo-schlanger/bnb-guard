@@ -7,7 +7,6 @@ import pytest
 import json
 from app.utils.fetch_metadata import fetch_token_metadata
 
-# Fake response utilitário
 def fake_response(json_data, ok=True):
     class Fake:
         def __init__(self):
@@ -22,7 +21,6 @@ def test_fetch_metadata_success(monkeypatch):
            {"name": "symbol", "type": "function"},
            {"name": "totalSupply", "type": "function"}]
 
-    # 🧪 Patch da requests.get com ABI como string
     monkeypatch.setattr("app.utils.fetch_metadata.requests.get", lambda url: fake_response({
         "result": [{
             "ABI": json.dumps(abi),
@@ -33,7 +31,6 @@ def test_fetch_metadata_success(monkeypatch):
         }]
     }))
 
-    # 🧪 Mocks de Web3 + contract
     class MockFunctionCall:
         def __init__(self, value):
             self.value = value
@@ -60,35 +57,29 @@ def test_fetch_metadata_success(monkeypatch):
         def __init__(self, provider): self.eth = MockEth()
         def to_checksum_address(self, addr): return addr
 
-    # 🧪 Patch da Web3
     monkeypatch.setattr("app.utils.fetch_metadata.Web3", MockWeb3)
 
-    # ✅ Execução e verificação
     result = fetch_token_metadata("0x123")
     assert result["name"] == "TestToken"
     assert result["symbol"] == "TT"
     assert result["totalSupply"] == "1000000000000000000000000"
 
 
-# ❌ HTTP error
 def test_fetch_metadata_http_error(monkeypatch):
     monkeypatch.setattr("app.utils.fetch_metadata.requests.get", lambda url: fake_response({}, ok=False))
-    with pytest.raises(Exception, match="chamada BscScan"):
+    with pytest.raises(Exception, match="BscScan call"):
         fetch_token_metadata("0x123")
 
-# ❌ Result None
 def test_fetch_metadata_result_none(monkeypatch):
     monkeypatch.setattr("app.utils.fetch_metadata.requests.get", lambda url: fake_response({"result": None}))
-    with pytest.raises(Exception, match="Nenhum dado retornado"):
+    with pytest.raises(Exception, match="No data returned"):
         fetch_token_metadata("0x123")
 
-# ❌ Result vazio
 def test_fetch_metadata_result_empty(monkeypatch):
     monkeypatch.setattr("app.utils.fetch_metadata.requests.get", lambda url: fake_response({"result": []}))
-    with pytest.raises(Exception, match="Nenhum dado retornado"):
+    with pytest.raises(Exception, match="No data returned"):
         fetch_token_metadata("0x123")
 
-# ❌ ABI não verificada
 def test_fetch_metadata_unverified_contract(monkeypatch):
     monkeypatch.setattr("app.utils.fetch_metadata.requests.get", lambda url: fake_response({
         "result": [{
@@ -100,7 +91,6 @@ def test_fetch_metadata_unverified_contract(monkeypatch):
     assert result["symbol"] == "N/A"
     assert result["totalSupply"] == 0
 
-# ❌ ABI válida mas erro em chamada Web3
 def test_fetch_metadata_web3_error(monkeypatch):
     monkeypatch.setattr("app.utils.fetch_metadata.requests.get", lambda url: fake_response({
         "result": [{

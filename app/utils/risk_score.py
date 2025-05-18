@@ -3,89 +3,89 @@ def calculate_risk_score(static_alerts, dynamic_alerts, onchain_alerts):
     alerts = []
     risks = []
 
-    # 🎯 Funções críticas
+    # 🎯 Critical Functions
     dangerous_functions = static_alerts.get("functions", [])
     if dangerous_functions:
         score -= 20
-        alerts.append("🚨 Funções críticas detectadas")
+        alerts.append("🚨 Critical functions detected")
         risks.append({
             "type": "owner",
-            "description": f"Funções críticas encontradas: {', '.join(f['name'] for f in dangerous_functions)}",
-            "severity": "alta"
+            "description": f"Critical functions found: {', '.join(f['name'] for f in dangerous_functions)}",
+            "severity": "high"
         })
 
     # 👑 Owner
     owner_info = static_alerts.get("owner", {})
     if not owner_info.get("renounced", False):
         score -= 10
-        alerts.append("⚠️ Propriedade não renunciada")
+        alerts.append("⚠️ Ownership not renounced")
         risks.append({
             "type": "owner",
-            "description": "Contrato ainda sob controle de um owner",
-            "severity": "alta"
+            "description": "Contract still under owner control",
+            "severity": "high"
         })
 
-    # 💸 Taxas
+    # 💸 Fees
     fees = dynamic_alerts.get("fees", {})
     if fees.get("buy_mutable") or fees.get("sell_mutable"):
         score -= 10
-        alerts.append("⚠️ Taxas mutáveis")
+        alerts.append("⚠️ Mutable fees")
         risks.append({
             "type": "fees",
-            "description": "Taxas podem ser alteradas via funções setFee",
-            "severity": "média"
+            "description": "Fees can be changed via setFee functions",
+            "severity": "medium"
         })
 
     if fees.get("buy", 0) > 10 or fees.get("sell", 0) > 10:
         score -= 5
-        alerts.append("⚠️ Taxas acima de 10%")
+        alerts.append("⚠️ Fees above 10%")
         risks.append({
             "type": "fees",
-            "description": f"Taxa de compra/venda acima de 10%: buy={fees.get('buy')}%, sell={fees.get('sell')}%",
-            "severity": "média"
+            "description": f"Buy/Sell fees above 10%: buy={fees.get('buy')}%, sell={fees.get('sell')}%",
+            "severity": "medium"
         })
 
     # 🪙 Honeypot
     honeypot = dynamic_alerts.get("honeypot", {})
     if honeypot.get("buy_success") and not honeypot.get("sell_success"):
         score -= 40
-        alerts.append("🧸 Possível honeypot (venda falha)")
+        alerts.append("🧸 Possible honeypot (sell fails)")
         risks.append({
             "type": "honeypot",
-            "description": f"Venda falhou: {honeypot.get('error_message', 'erro desconhecido')}",
-            "severity": "alta"
+            "description": f"Sell failed: {honeypot.get('error_message', 'unknown error')}",
+            "severity": "high"
         })
 
     # 🔒 LP
     lp = onchain_alerts.get("lp_info", {})
     if not lp.get("locked", False):
         score -= 10
-        alerts.append("🔓 LP não está travada")
+        alerts.append("🔓 LP not locked")
         risks.append({
             "type": "lp",
-            "description": "Contrato de liquidez não possui travamento",
-            "severity": "média"
+            "description": "Liquidity contract is not locked",
+            "severity": "medium"
         })
 
-    # 🧠 Deploy histórico
+    # 🧠 Deploy History
     deployer = onchain_alerts.get("deployer", {})
     tokens = deployer.get("token_history", [])
     if len(tokens) >= 3:
         score -= 10
-        alerts.append("❗ Criador já lançou múltiplos tokens")
+        alerts.append("❗ Creator has launched multiple tokens")
         risks.append({
             "type": "deployer",
-            "description": f"O deployer criou {len(tokens)} tokens anteriores",
-            "severity": "média"
+            "description": f"Deployer has created {len(tokens)} previous tokens",
+            "severity": "medium"
         })
 
-    # 🧮 Ajuste final
+    # 🧮 Final Adjustment
     score = max(0, min(score, 100))
     grade = (
-            "🟥 Altíssimo Risco" if score <= 30 else
-            "🟧 Risco Alto" if score <= 60 else
-            "🟨 Risco Moderado" if score <= 80 else
-            "🟩 Baixo Risco"
+            "🔴 Extreme Risk" if score <= 30 else
+            "🟠 High Risk" if score <= 60 else
+            "🟡 Moderate Risk" if score <= 80 else
+            "🟢 Low Risk"
         )
 
     return {

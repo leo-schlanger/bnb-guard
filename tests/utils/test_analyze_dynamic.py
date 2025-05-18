@@ -1,7 +1,7 @@
 import pytest
 from app.utils.analyze_dynamic import analyze_dynamic
 
-# ✅ Compra e venda com sucesso, taxas e slippage calculadas
+# ✅ Successful buy and sell, taxes and slippage calculated
 def test_analyze_dynamic_full_success():
     data = {
         "buy": {
@@ -25,7 +25,7 @@ def test_analyze_dynamic_full_success():
     assert result["sell_slippage"] == 10.0
     assert result["error"] is None
 
-# ⚠️ Compra ok, venda falha (honeypot)
+# ⚠️ Successful buy, failed sell (honeypot)
 def test_analyze_dynamic_buy_only():
     data = {
         "buy": {
@@ -44,7 +44,7 @@ def test_analyze_dynamic_buy_only():
     assert result["buy_tax"] == 10.0
     assert result["sell_tax"] is None
 
-# ⚠️ Venda ok, compra falha (situação atípica)
+# ⚠️ Successful sell, failed buy (atypical situation)
 def test_analyze_dynamic_sell_only():
     data = {
         "buy": {
@@ -63,7 +63,7 @@ def test_analyze_dynamic_sell_only():
     assert result["sell_tax"] == 5.0
     assert result["buy_tax"] is None
 
-# ⚠️ Nenhuma transação funcionou
+# ⚠️ No transactions succeeded
 def test_analyze_dynamic_both_fail():
     result = analyze_dynamic({
         "buy": {"success": False},
@@ -75,7 +75,7 @@ def test_analyze_dynamic_both_fail():
     assert result["buy_tax"] is None
     assert result["sell_tax"] is None
 
-# ⚠️ Valores ausentes (esperado ou recebido)
+# ⚠️ Missing values (expected or received)
 def test_analyze_dynamic_missing_values():
     data = {
         "buy": {"success": True, "expected_amount_out": None, "amount_out": 90},
@@ -85,8 +85,8 @@ def test_analyze_dynamic_missing_values():
     assert result["buy_tax"] is None
     assert result["sell_tax"] is None
 
-# ❌ Erro inesperado (simula KeyError interno)
+# ❌ Unexpected error (simulates internal KeyError)
 def test_analyze_dynamic_with_exception():
-    result = analyze_dynamic("string que quebra")  # deveria ser dict
+    result = analyze_dynamic("string que quebra")
     assert result["error"] is not None
     assert isinstance(result["error"], str)

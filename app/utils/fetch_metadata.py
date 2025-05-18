@@ -4,7 +4,7 @@ from config import BSCSCAN_API_KEY, BSC_RPC_URL
 from decimal import Decimal
 
 def fetch_token_metadata(token_address):
-    # 1. BscScan sourcecode
+    # 1. BscScan source code
     url = (
         f"https://api.bscscan.com/api"
         f"?module=contract"
@@ -15,15 +15,15 @@ def fetch_token_metadata(token_address):
     response = requests.get(url)
 
     if not response.ok:
-        raise Exception("❌ Erro na chamada BscScan")
+        raise Exception("❌ BscScan call failed")
 
     result = response.json().get("result", [])
     if not result or not isinstance(result[0], dict):
-        raise Exception("❌ Nenhum dado retornado")
+        raise Exception("❌ No data returned")
 
     metadata = result[0]
 
-    # 2. Conectar via Web3 à BNB Chain
+    # 2. Connect via Web3 to BNB Chain
     w3 = Web3(Web3.HTTPProvider(BSC_RPC_URL))
     abi = metadata.get("ABI", "[]")
 

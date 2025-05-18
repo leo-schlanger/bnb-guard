@@ -9,7 +9,7 @@ from app.routes.audit import router as audit_router
 app = FastAPI(
     title="BNBGuard API",
     version="0.1.0",
-    description="Análise de risco automatizada para tokens da BNB Chain"
+    description="Automated risk analysis for BNB Chain tokens"
 )
 
 app.include_router(analyze_router)
