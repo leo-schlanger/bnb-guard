@@ -78,13 +78,13 @@ BNBGuard performs automated multi-layer analysis for newly created or user-submi
 
 ## 🧑‍💻 About Us
 
-### 👨‍💻 Bruno Weber — CEO
-Experienced web and backend developer passionate about security and distributed systems. As CEO of BNBGuard, Bruno leads strategy, product vision, and ecosystem integrations to bring automated security to the BNB Chain.
+### 👨‍💻 Bruno Weber — Co-Founder & COO
+Experienced web and backend developer passionate about security and distributed systems. As COO of BNBGuard, Bruno leads strategy, product vision, and ecosystem integrations to bring automated security to the BNB Chain.
 
 - [LinkedIn](https://www.linkedin.com/in/brunolweber/)
 - [GitHub](https://github.com/Bruno-Weber)
 
-### 👨‍💻 Leo Schlanger — CTO
+### 👨‍💻 Leo Schlanger — Co-Founder & CTO
 Full-stack developer with over 12 years of experience in software engineering. Specializes in automation, bots, smart contract integrations, and Web3 infrastructure. Leo is the technical mind behind BNBGuard, leading the development of its AI-based security engine.
 
 - [LinkedIn](https://www.linkedin.com/in/leo-schlanger-226467192/)
