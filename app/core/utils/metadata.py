@@ -514,12 +514,23 @@ def _fetch_token_metadata(web3: Web3, token_address: str, request_id: str = None
             }
         )
         
-        contract = _initialize_contract(
-            w3=web3, 
-            token_address=token_address, 
-            abi=token_abi,
-            request_id=request_id
-        )
+        # Initialize contract with retry logic and better error handling
+        try:
+            contract = _initialize_contract(
+                w3=web3, 
+                token_address=token_address, 
+                abi=token_abi,
+                max_retries=5,  # Increase retries
+                retry_delay=3,  # Longer delay between retries
+                request_id=request_id
+            )
+        except Exception as contract_err:
+            logger.error(
+                f"Failed to initialize contract: {str(contract_err)}",
+                context={**log_context, "error": str(contract_err)},
+                exc_info=True
+            )
+            raise
         
         # Get token details with safe contract calls
         logger.debug("Fetching token details", context=log_context)
@@ -556,26 +567,52 @@ def _fetch_token_metadata(web3: Web3, token_address: str, request_id: str = None
             }
         )
         
+        # Verify metadata is valid
+        if not result or not isinstance(result, dict):
+            logger.error(
+                "Invalid metadata format",
+                context={
+                    "token_address": token_address,
+                    "request_id": request_id,
+                    "metadata_type": type(result).__name__
+                }
+            )
+            return {
+                "name": "Error",
+                "symbol": "ERR",
+                "decimals": 18,
+                "totalSupply": 0,
+                "rawTotalSupply": "0",
+                "error": "Invalid metadata format",
+                "error_type": "FormatError"
+            }
+            
         return result
         
     except Exception as e:
+        error_context = {
+            "token_address": token_address,
+            "request_id": request_id,
+            "error_type": type(e).__name__,
+            "time_elapsed_seconds": f"{time.time() - start_time:.2f}s"
+        }
+        
         _handle_metadata_failure(
             token_address=token_address,
             error=e,
-            context={
-                **log_context,
-                "duration_seconds": f"{time.time() - start_time:.4f}"
-            },
+            context=error_context,
             request_id=request_id
         )
         
-        # Return default values on failure
+        # Return error response instead of raising
         return {
-            "name": "Unknown",
-            "symbol": "UNKNOWN",
+            "name": "Error",
+            "symbol": "ERR",
             "decimals": 18,
             "totalSupply": 0,
-            "rawTotalSupply": "0"
+            "rawTotalSupply": "0",
+            "error": str(e),
+            "error_type": type(e).__name__
         }
 
 def _get_token_supply(
@@ -749,23 +786,58 @@ def fetch_token_metadata(token_address: str) -> TokenMetadata:
         Exception: For any other unexpected errors
     """
     start_time = time.time()
+    request_id = f"meta-{int(time.time())}"
+    
     logger.info(
         "Starting token metadata fetch",
         context={
             "token_address": token_address,
+            "request_id": request_id,
             "start_time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(start_time))
         }
     )
     
     try:
         # Validate and normalize token address
-        token_address = _validate_token_address(token_address)
+        try:
+            token_address = _validate_token_address(token_address)
+        except ValueError as e:
+            logger.error(
+                f"Invalid token address: {str(e)}",
+                context={"token_address": token_address, "request_id": request_id},
+                exc_info=True
+            )
+            return {
+                "name": "Error",
+                "symbol": "ERR",
+                "decimals": 18,
+                "totalSupply": 0,
+                "rawTotalSupply": "0",
+                "error": f"Invalid token address: {str(e)}",
+                "error_type": "ValueError"
+            }
         
         # Initialize Web3 with retry logic
-        web3 = _initialize_web3_with_retry()
+        try:
+            web3 = _initialize_web3_with_retry(request_id=request_id)
+        except Exception as e:
+            logger.error(
+                f"Failed to initialize Web3: {str(e)}",
+                context={"token_address": token_address, "request_id": request_id},
+                exc_info=True
+            )
+            return {
+                "name": "Error",
+                "symbol": "ERR",
+                "decimals": 18,
+                "totalSupply": 0,
+                "rawTotalSupply": "0",
+                "error": f"Web3 connection error: {str(e)}",
+                "error_type": type(e).__name__
+            }
         
         # Fetch token metadata
-        token_details = _fetch_token_metadata(web3, token_address)
+        token_details = _fetch_token_metadata(web3, token_address, request_id=request_id)
         
         # Create standardized response
         metadata = _create_metadata_response(token_address, token_details)
@@ -774,8 +846,9 @@ def fetch_token_metadata(token_address: str) -> TokenMetadata:
             "Successfully fetched token metadata",
             context={
                 "token_address": token_address,
-                "symbol": metadata["symbol"],
-                "name": metadata["name"],
+                "request_id": request_id,
+                "symbol": metadata.get("symbol", "UNKNOWN"),
+                "name": metadata.get("name", "Unknown"),
                 "time_elapsed_seconds": f"{time.time() - start_time:.2f}s"
             }
         )

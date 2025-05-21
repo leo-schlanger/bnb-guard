@@ -1,7 +1,15 @@
+"""Main application module for BNBGuard API.
+
+This module initializes the FastAPI application, sets up logging,
+registers routers, middleware, and exception handlers.
+"""
+
 import os
 import sys
 import logging
+from datetime import datetime
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 # Add project root to path first
 project_root = Path(__file__).parent.parent
@@ -17,24 +25,20 @@ logger.setLevel(log_level)
 logger.info(f"Logging level set to: {log_level}")
 logger.info(f"Initializing BNBGuard API (log level: {log_level})")
 
-# Now import other dependencies
-try:
-    from contextlib import asynccontextmanager
-    from fastapi import FastAPI, Request, status
-    from fastapi.responses import JSONResponse
-    from fastapi.exceptions import RequestValidationError
-    logger.debug("Successfully imported FastAPI and dependencies")
-except ImportError as e:
-    logger.error(f"Failed to import required dependencies: {e}")
-    raise
+# Import FastAPI dependencies
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 
+# Import routers
 from app.routes.analyze import router as analyze_router
 from app.routes.audit import router as audit_router
-from app.routes.test_logs import router as test_logs_router
-from app.routes.simple_health import router as health_router
+from app.routes.health import router as health_router
 
-# Import all routers
+# Constants
 API_PREFIX = "/api/v1"
+APP_VERSION = "1.0.0"
 
 # API metadata
 tags_metadata = [
@@ -46,25 +50,52 @@ tags_metadata = [
         "name": "audit",
         "description": "Comprehensive security audits for token contracts.",
     },
+    {
+        "name": "health",
+        "description": "System health monitoring and diagnostics.",
+    },
+    {
+        "name": "root",
+        "description": "API information and documentation.",
+    },
 ]
 
+# Application lifecycle management
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Handle application startup and shutdown events."""
+    """Handle application startup and shutdown events.
+    
+    Args:
+        app: The FastAPI application instance
+    """
     # Startup
     logger.info("Starting BNBGuard API service")
     try:
+        # Perform startup operations here (e.g., connect to database)
         yield
     finally:
         # Shutdown
         logger.info("Shutting down BNBGuard API service", context={"service": "BNBGuard API"})
+        # Perform cleanup operations here (e.g., close database connections)
 
 # Exception handlers
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle request validation errors."""
+    """Handle request validation errors.
+    
+    Args:
+        request: The incoming request
+        exc: The validation exception
+        
+    Returns:
+        JSONResponse with validation error details
+    """
     logger.error(
         "Request validation error",
-        context={"path": str(request.url.path), "errors": str(exc.errors())},
+        context={
+            "path": str(request.url.path), 
+            "method": request.method,
+            "errors": str(exc.errors())
+        },
     )
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -72,39 +103,73 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 async def global_exception_handler(request: Request, exc: Exception):
-    """Handle all unhandled exceptions."""
+    """Handle all unhandled exceptions.
+    
+    Args:
+        request: The incoming request
+        exc: The unhandled exception
+        
+    Returns:
+        JSONResponse with generic error message
+    """
     logger.error(
         "Unhandled exception",
         exc_info=exc,
-        context={"path": str(request.url.path), "error": str(exc)},
+        context={
+            "path": str(request.url.path), 
+            "method": request.method,
+            "error": str(exc)
+        },
     )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "Internal server error"},
     )
 
-# Initialize FastAPI with metadata and lifespan
+# Initialize FastAPI application
 app = FastAPI(
     title="BNBGuard API",
     description="Automated risk analysis for BNB Chain tokens",
-    version="1.0.0",
+    version=APP_VERSION,
     openapi_tags=tags_metadata,
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan
 )
 
-# Add exception handlers
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # For development; restrict in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Register exception handlers
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, global_exception_handler)
 
-# Add middleware for request/response logging
+# Request/response logging middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Middleware to log all incoming requests and responses."""
+    """Middleware to log all incoming requests and responses.
+    
+    Args:
+        request: The incoming request
+        call_next: The next middleware or route handler
+        
+    Returns:
+        The response from the route handler
+    """
+    # Generate request ID for tracking
+    request_id = f"{int(datetime.now().timestamp())}-{request.client.host if request.client else 'unknown'}"
+    
+    # Log incoming request
     logger.info(
         "Request received",
         context={
+            "request_id": request_id,
             "method": request.method,
             "url": str(request.url),
             "client": request.client.host if request.client else "unknown"
@@ -115,6 +180,7 @@ async def log_requests(request: Request, call_next):
     logger.debug(
         "Request details",
         context={
+            "request_id": request_id,
             "method": request.method,
             "url": str(request.url),
             "headers": dict(request.headers),
@@ -125,14 +191,20 @@ async def log_requests(request: Request, call_next):
     )
     
     try:
+        # Process the request
+        start_time = datetime.now()
         response = await call_next(request)
+        process_time = (datetime.now() - start_time).total_seconds() * 1000
         
+        # Log completed request
         logger.info(
             "Request completed",
             context={
+                "request_id": request_id,
                 "method": request.method,
                 "url": str(request.url),
-                "status_code": response.status_code
+                "status_code": response.status_code,
+                "process_time_ms": round(process_time, 2)
             }
         )
         
@@ -140,6 +212,7 @@ async def log_requests(request: Request, call_next):
         logger.debug(
             "Response details",
             context={
+                "request_id": request_id,
                 "method": request.method,
                 "url": str(request.url),
                 "status_code": response.status_code,
@@ -150,9 +223,11 @@ async def log_requests(request: Request, call_next):
         return response
         
     except Exception as e:
+        # Log request processing failures
         logger.error(
             "Request processing failed",
             context={
+                "request_id": request_id,
                 "method": request.method,
                 "url": str(request.url),
                 "error": str(e)
@@ -161,60 +236,70 @@ async def log_requests(request: Request, call_next):
         )
         raise
 
-# Add the logging middleware after it's defined
+# Register middleware
 app.middleware("http")(log_requests)
 
-# Include all API routers
+# Register API routers
 app.include_router(analyze_router, prefix=API_PREFIX)
 app.include_router(audit_router, prefix=API_PREFIX)
-app.include_router(test_logs_router, prefix=API_PREFIX)
 app.include_router(health_router, prefix=API_PREFIX)
-
-# Legacy health check endpoint - redirects to the new health check API
-@app.get("/health", tags=["health"], deprecated=True)
-async def health_check():
-    """Legacy health check endpoint (deprecated)."""
-    logger.info("Legacy health check endpoint accessed")
-    return {"status": "ok", "timestamp": datetime.now().isoformat(), "message": "This endpoint is deprecated. Please use /api/v1/health instead."}
 
 # Root endpoint with API information
 @app.get("/", tags=["root"])
 async def root():
-    """Root endpoint with API information."""
+    """Root endpoint with API information.
+    
+    Returns:
+        Dictionary with API metadata and links
+    """
     logger.info("Root endpoint accessed")
     return {
         "name": "BNBGuard API",
-        "version": "1.0.0",
+        "version": APP_VERSION,
         "description": "API for analyzing and auditing BSC token contracts",
-        "documentation": "/docs",
-        "redoc": "/redoc",
-        "health": "/health",
-        "test_logs": "/test-log"
+        "endpoints": {
+            "documentation": "/docs",
+            "redoc": "/redoc",
+            "health": f"{API_PREFIX}/health",
+            "analyze": f"{API_PREFIX}/analyze/{{token_address}}",
+            "audit": f"{API_PREFIX}/audit/{{token_address}}"
+        }
     }
 
 # Test logging endpoint
-@app.get("/test-log", tags=["test"])
+@app.get("/test-log", tags=["test"], include_in_schema=False)
 async def test_log():
-    """Test logging at different levels."""
+    """Test logging at different levels.
+    
+    This endpoint is for development and testing purposes only.
+    
+    Returns:
+        Dictionary with test results
+    """
+    request_id = f"test-log-{int(datetime.now().timestamp())}"
     test_logger = logging.getLogger("app.test")
     
     # Log messages at different levels
-    test_logger.debug("This is a DEBUG message")
-    test_logger.info("This is an INFO message")
-    test_logger.warning("This is a WARNING message")
-    test_logger.error("This is an ERROR message")
+    test_logger.debug("This is a DEBUG message", extra={"context": {"request_id": request_id}})
+    test_logger.info("This is an INFO message", extra={"context": {"request_id": request_id}})
+    test_logger.warning("This is a WARNING message", extra={"context": {"request_id": request_id}})
+    test_logger.error("This is an ERROR message", extra={"context": {"request_id": request_id}})
     
     # Test exception logging
     try:
         1 / 0
     except Exception as e:
-        test_logger.exception("This is an ERROR with exception")
+        test_logger.exception(
+            "This is an ERROR with exception", 
+            extra={"context": {"request_id": request_id}}
+        )
     
     # Also log with the main logger
-    logger.info("Test log endpoint was called")
+    logger.info("Test log endpoint was called", context={"request_id": request_id})
     
     return {
         "status": "Logging test completed",
         "log_file": "logs/app.log",
-        "log_level": logging.getLevelName(logger.getEffectiveLevel())
+        "log_level": logging.getLevelName(logger.getEffectiveLevel()),
+        "request_id": request_id
     }
