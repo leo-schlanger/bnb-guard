@@ -1,20 +1,32 @@
 
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Literal, Optional, Dict
+
+class Alert(BaseModel):
+    """Estrutura de um alerta de segurança."""
+    type: str
+    message: str
+    severity: Literal['info', 'low', 'medium', 'high', 'critical']
 
 class ScoreDetail(BaseModel):
     value: int
     details: List[str]
 
 class HoneypotAudit(BaseModel):
+    """Informações sobre possível honeypot."""
+    is_honeypot: bool
     buy_success: bool
     sell_success: bool
-    slippage: float
-    error_message: Optional[str]
+    high_tax: bool
+    tax_discrepancy: bool
+    error: Optional[str]
 
 class FeesAudit(BaseModel):
+    """Informações sobre taxas e slippage."""
     buy: float
     sell: float
+    buy_slippage: float
+    sell_slippage: float
     buy_mutable: bool
     sell_mutable: bool
 
@@ -26,11 +38,6 @@ class LPLockAudit(BaseModel):
 class OwnerAudit(BaseModel):
     renounced: bool
     functions: List[str]
-
-class CriticalFunction(BaseModel):
-    name: str
-    access: str
-    description: str
 
 class Holder(BaseModel):
     address: str
@@ -66,7 +73,7 @@ class AuditResponse(BaseModel):
     fees: FeesAudit
     lp_lock: LPLockAudit
     owner: OwnerAudit
-    critical_functions: List[CriticalFunction]
+    critical_functions: List[Alert] = []
     top_holders: TopHoldersAudit
     deployer: DeployerAudit
     risks: List[RiskDetail]

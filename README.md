@@ -124,13 +124,47 @@ pytest --cov=.
 
 ## 📈 Roadmap
 
+### ✅ Implemented Features
+- [x] Core API infrastructure with FastAPI
+- [x] Token metadata fetching and parsing
 - [x] Static contract analysis
-- [x] PancakeSwap simulation
-- [x] Token risk scoring
-- [ ] Browser extension
-- [ ] AI agent integration
-- [ ] PRO dashboard & alerts
-- [ ] Auto LP/KYC verification
+  - [x] Detection of dangerous functions
+  - [x] Ownership and access control analysis
+  - [x] Basic vulnerability detection
+- [x] Dynamic analysis
+  - [x] Buy/sell simulation
+  - [x] Tax and fee analysis
+  - [x] Honeypot detection
+- [x] On-chain analysis
+  - [x] Deployer history check
+  - [x] Token holder distribution
+  - [x] LP lock verification
+- [x] Risk scoring system
+  - [x] Weighted risk calculation
+  - [x] Severity classification
+
+### 🔄 In Progress
+- [ ] Enhanced error handling and logging
+- [ ] Rate limiting and API key management
+- [ ] Comprehensive test coverage
+
+### 📅 Planned Features
+- [ ] Advanced pattern detection
+  - [ ] Rug pull indicators
+  - [ ] Token minting analysis
+  - [ ] Fee manipulation detection
+- [ ] Performance optimization
+  - [ ] Caching mechanisms
+  - [ ] Async processing
+  - [ ] Batch processing support
+- [ ] Enhanced security features
+  - [ ] Input validation
+  - [ ] Request signing
+  - [ ] IP-based rate limiting
+- [ ] Documentation
+  - [ ] API reference
+  - [ ] Integration guides
+  - [ ] Example implementations
 
 ---
 
