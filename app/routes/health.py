@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Create router
 router = APIRouter(
-    prefix="/health",
+    prefix="",  # Removido o prefixo, será adicionado no main.py
     tags=["system"]
 )
 

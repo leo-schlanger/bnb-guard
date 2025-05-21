@@ -19,7 +19,7 @@ logger = get_logger("app.routes.analyze")
 
 # Create router
 router = APIRouter(
-    prefix="/analyze",
+    prefix="",  # Removido o prefixo, será adicionado no main.py
     tags=["analysis"]
 )
 

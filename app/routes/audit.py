@@ -13,7 +13,7 @@ logger = get_logger("app.routes.audit")
 
 # Create router
 router = APIRouter(
-    prefix="/audit",
+    prefix="",  # Removido o prefixo, será adicionado no main.py
     tags=["audit"]
 )
 

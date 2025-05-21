@@ -126,29 +126,39 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "Internal server error"},
     )
 
-# Initialize FastAPI application
-app = FastAPI(
-    title="BNBGuard API",
-    description="Automated risk analysis for BNB Chain tokens",
-    version=APP_VERSION,
-    openapi_tags=tags_metadata,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    lifespan=lifespan
-)
+def create_application() -> FastAPI:
+    """Create and configure the FastAPI application.
+    
+    Returns:
+        FastAPI: Configured FastAPI application instance
+    """
+    app = FastAPI(
+        title="BNBGuard API",
+        description="Automated risk analysis for BNB Chain tokens",
+        version=APP_VERSION,
+        openapi_tags=tags_metadata,
+        docs_url="/docs",
+        redoc_url="/redoc",
+        lifespan=lifespan
+    )
+    
+    # Add CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # For development; restrict in production
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
+    # Register exception handlers
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    app.add_exception_handler(Exception, global_exception_handler)
+    
+    return app
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # For development; restrict in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Register exception handlers
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
-app.add_exception_handler(Exception, global_exception_handler)
+# Create the FastAPI application
+app = create_application()
 
 # Request/response logging middleware
 @app.middleware("http")
@@ -236,70 +246,96 @@ async def log_requests(request: Request, call_next):
         )
         raise
 
-# Register middleware
-app.middleware("http")(log_requests)
-
-# Register API routers
-app.include_router(analyze_router, prefix=API_PREFIX)
-app.include_router(audit_router, prefix=API_PREFIX)
-app.include_router(health_router, prefix=API_PREFIX)
-
-# Root endpoint with API information
-@app.get("/", tags=["root"])
-async def root():
-    """Root endpoint with API information.
+def register_middleware(app: FastAPI) -> None:
+    """Register all middleware.
     
-    Returns:
-        Dictionary with API metadata and links
+    Args:
+        app: FastAPI application instance
     """
-    logger.info("Root endpoint accessed")
-    return {
-        "name": "BNBGuard API",
-        "version": APP_VERSION,
-        "description": "API for analyzing and auditing BSC token contracts",
-        "endpoints": {
-            "documentation": "/docs",
-            "redoc": "/redoc",
-            "health": f"{API_PREFIX}/health",
-            "analyze": f"{API_PREFIX}/analyze/{{token_address}}",
-            "audit": f"{API_PREFIX}/audit/{{token_address}}"
+    app.middleware("http")(log_requests)
+
+def register_routers(app: FastAPI) -> None:
+    """Register all API routers.
+    
+    Args:
+        app: FastAPI application instance
+    """
+    # API v1 routes
+    app.include_router(analyze_router, prefix=f"{API_PREFIX}/analyze")
+    app.include_router(audit_router, prefix=f"{API_PREFIX}/audit")
+    app.include_router(health_router, prefix=f"{API_PREFIX}/health")
+    
+    # Root endpoint
+    @app.get("/", tags=["root"])
+    async def root():
+        """Root endpoint with API information.
+        
+        Returns:
+            Dictionary with API metadata and links
+        """
+        logger.info("Root endpoint accessed")
+        return {
+            "name": "BNBGuard API",
+            "version": APP_VERSION,
+            "status": "operational",
+            "documentation": {
+                "swagger": "/docs",
+                "redoc": "/redoc"
+            },
+            "endpoints": [
+                {"path": f"{API_PREFIX}/analyze/{{token_address}}", "methods": ["GET"], "description": "Analyze token contract"},
+                {"path": f"{API_PREFIX}/audit/{{token_address}}", "methods": ["GET"], "description": "Full token audit"},
+                {"path": f"{API_PREFIX}/health", "methods": ["GET"], "description": "Health check"}
+            ]
         }
-    }
 
-# Test logging endpoint
-@app.get("/test-log", tags=["test"], include_in_schema=False)
-async def test_log():
-    """Test logging at different levels.
-    
-    This endpoint is for development and testing purposes only.
-    
-    Returns:
-        Dictionary with test results
-    """
-    request_id = f"test-log-{int(datetime.now().timestamp())}"
-    test_logger = logging.getLogger("app.test")
-    
-    # Log messages at different levels
-    test_logger.debug("This is a DEBUG message", extra={"context": {"request_id": request_id}})
-    test_logger.info("This is an INFO message", extra={"context": {"request_id": request_id}})
-    test_logger.warning("This is a WARNING message", extra={"context": {"request_id": request_id}})
-    test_logger.error("This is an ERROR message", extra={"context": {"request_id": request_id}})
-    
-    # Test exception logging
-    try:
-        1 / 0
-    except Exception as e:
-        test_logger.exception(
-            "This is an ERROR with exception", 
-            extra={"context": {"request_id": request_id}}
+# Register middleware and routers
+register_middleware(app)
+register_routers(app)
+
+# Test logging endpoint (only in development)
+if os.getenv("ENV", "development") == "development":
+    @app.get("/test-log", tags=["debug"])
+    async def test_log():
+        """Test logging at different levels.
+        
+        This endpoint is for development and testing purposes only.
+        
+        Returns:
+            Dictionary with test results
+        """
+        results = {
+            "debug": "Debug message logged",
+            "info": "Info message logged",
+            "warning": "Warning message logged",
+            "error": "Error message logged",
+            "critical": "Critical message logged",
+        }
+        
+        # Log messages at different levels
+        logger.debug("This is a debug message")
+        logger.info("This is an info message")
+        logger.warning("This is a warning message")
+        logger.error("This is an error message")
+        logger.critical("This is a critical message")
+        
+        # Log with context
+        logger.info(
+            "Test log with context",
+            extra={
+                "context": {
+                    "user_id": "test_user",
+                    "action": "test_log",
+                    "status": "success"
+                }
+            }
         )
-    
-    # Also log with the main logger
-    logger.info("Test log endpoint was called", context={"request_id": request_id})
-    
-    return {
-        "status": "Logging test completed",
-        "log_file": "logs/app.log",
-        "log_level": logging.getLevelName(logger.getEffectiveLevel()),
-        "request_id": request_id
-    }
+        
+        return {
+            "status": "success",
+            "message": "Test logs generated",
+            "results": results,
+            "timestamp": datetime.utcnow().isoformat(),
+            "log_file": "logs/app.log",
+            "log_level": logging.getLevelName(logger.getEffectiveLevel())
+        }
