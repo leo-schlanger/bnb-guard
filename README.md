@@ -7,13 +7,95 @@
   🛡️ Automated Security for the BNB Smart Chain — detect risks before they detect you.
 </p>
 
----
 
 ## 🚀 Overview
 
-**BNBGuard** is a fully automated **security analysis platform** focused exclusively on the **BNB Smart Chain (BSC)**. It was created to protect investors, developers, and regular users from scams, malicious contracts, honeypots, and fraudulent tokens.
+**BNBGuard** is an automated security analysis platform focused exclusively on the **Binance Smart Chain (BSC)**. It was created to protect investors, developers, and regular users from scams, malicious contracts, honeypots, and fraudulent tokens.
 
-Every day, hundreds of new tokens are launched on the BSC—many with malicious intent and no audit whatsoever. BNBGuard addresses this problem by providing deep, accessible security analysis via browser extension or API.
+Hundreds of new tokens are launched on BSC every day - many with malicious intent and no audit. BNBGuard addresses this issue by providing in-depth, accessible security analysis through a browser extension or API.
+
+## 🛠️ Setup and Installation
+
+### Prerequisites
+
+- Python 3.8+
+- Pip (Python package manager)
+- BscScan API key (get it from [BscScan](https://bscscan.com/apis))
+
+### Environment Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/leo-schlanger/bnb-guard.git
+   cd bnb-guard
+   ```
+
+2. **Create and activate a virtual environment**
+   ```bash
+   # Linux/MacOS
+   python -m venv venv
+   source venv/bin/activate
+
+   # Windows
+   python -m venv venv
+   .\venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure environment variables**
+   - Copy `.env.example` to `.env`
+   - Update variables as needed, especially `BSCSCAN_API_KEY`
+   ```bash
+   cp .env.example .env
+   ```
+
+### Running the Application
+
+1. **Start the development server**
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+2. **Access the interactive documentation**
+   - Swagger UI: http://localhost:8000/docs
+   - ReDoc: http://localhost:8000/redoc
+
+### Testing the API
+
+You can test the endpoints using `curl` or tools like Postman/Insomnia:
+
+```bash
+# Token analysis
+curl -X 'GET' \
+  'http://localhost:8000/api/v1/analyze/0x0000000000000000000000000000000000000000' \
+  -H 'accept: application/json'
+
+# Token audit
+curl -X 'GET' \
+  'http://localhost:8000/api/v1/audit/0x0000000000000000000000000000000000000000' \
+  -H 'accept: application/json'
+```
+
+## 🏗️ Project Structure
+
+```
+bnb-guard/
+├── app/
+│   ├── core/           # Core configurations and utilities
+│   ├── models/         # Pydantic data models
+│   ├── routes/         # API route definitions
+│   ├── schemas/        # Request/response schemas
+│   ├── services/       # Business logic and services
+│   └── main.py         # Application entry point
+├── tests/              # Automated tests
+├── .env.example       # Environment variables example
+├── requirements.txt    # Project dependencies
+└── README.md          # Documentation
+```
 
 ---
 
@@ -91,18 +173,6 @@ Full-stack developer with over 12 years of experience in software engineering. S
 - [GitHub](https://github.com/leo-schlanger)
   
   
----
-
-## 📦 Local Installation (for developers)
-
-```bash
-git clone https://github.com/your-org/bnbguard.git
-cd bnbguard
-cp .env.example .env
-# Add your BscScan API_KEY
-uvicorn app.main:app
-```
-
 ---
 
 ## 🔌 API Endpoints

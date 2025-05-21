@@ -1,8 +1,52 @@
-requests
-web3
-pytest
+# Core
 fastapi
 uvicorn
-httpx
 python-dotenv
-colorama
+pydantic
+pydantic-settings
+python-multipart
+
+# Web3 & Blockchain
+web3
+eth-typing
+eth-utils
+web3client
+
+# HTTP Clients
+httpx
+requests
+aiohttp
+
+# Async
+anyio
+asyncio
+
+# Utils
+python-dateutil
+python-slugify
+pytz
+
+# Logging
+python-json-logger
+loguru
+
+# Testing
+pytest
+pytest-asyncio
+pytest-cov
+httpx
+
+# Documentation
+mkdocs
+mkdocs-material
+
+# Code Quality
+black
+isort
+mypy
+flake8
+
+# Development
+python-dotenv
+watchfiles
+ipython

@@ -51,3 +51,6 @@ htmlcov/
 *.sock
 
 .txt
+
+# Logs
+logs/

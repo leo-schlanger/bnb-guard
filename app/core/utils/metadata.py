@@ -17,8 +17,68 @@ from config import BSCSCAN_API_KEY, BSC_RPC_URL
 
 logger = get_logger(__name__)
 
-def _get_contract_abi() -> list:
-    """Return minimal ABI for basic token functions."""
+def _get_bscscan_abi(contract_address: str) -> Optional[list]:
+    """
+    Fetch contract ABI from BscScan API.
+    
+    Args:
+        contract_address: The contract address to fetch ABI for
+        
+    Returns:
+        list: The contract ABI or None if not found
+    """
+    if not BSCSCAN_API_KEY:
+        logger.warning("BSCSCAN_API_KEY not configured")
+        return None
+        
+    url = f"https://api.bscscan.com/api"
+    params = {
+        "module": "contract",
+        "action": "getabi",
+        "address": contract_address,
+        "apikey": BSCSCAN_API_KEY
+    }
+    
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data["status"] == "1" and data["message"] == "OK":
+            return json.loads(data["result"])
+            
+        logger.warning("Failed to fetch ABI from BscScan", context={
+            "status": data.get("status"),
+            "message": data.get("message"),
+            "result": data.get("result")
+        })
+        return None
+        
+    except Exception as e:
+        logger.warning("Error fetching ABI from BscScan", context={
+            "error": str(e),
+            "contract_address": contract_address
+        })
+        return None
+
+
+def _get_contract_abi(token_address: str = None) -> list:
+    """
+    Get contract ABI, trying BscScan first, falling back to minimal ABI.
+    
+    Args:
+        token_address: The token contract address (optional)
+        
+    Returns:
+        list: The contract ABI
+    """
+    # Try to get ABI from BscScan if token address is provided
+    if token_address and BSCSCAN_API_KEY:
+        abi = _get_bscscan_abi(token_address)
+        if abi:
+            return abi
+    
+    # Fallback to minimal ABI
     return [
         {
             "constant": True,
@@ -59,51 +119,121 @@ def _get_contract_abi() -> list:
     ]
 
 
-def _safe_contract_call(contract: Any, func_name: str, token_address: str, default: Any = None) -> Any:
-    """Safely call a contract function with error handling and logging."""
+def _safe_contract_call(contract: Any, func_name: str, token_address: str, default: Any = None, request_id: str = None) -> Any:
+    """
+    Safely call a contract function with error handling and logging.
+    
+    Args:
+        contract: Web3 contract instance
+        func_name: Name of the contract function to call
+        token_address: Token contract address for logging
+        default: Default value to return on failure
+        request_id: Optional request ID for correlation
+        
+    Returns:
+        The result of the function call or the default value on failure
+    """
+    start_time = time.time()
+    log_context = {
+        "contract_address": token_address,
+        "function": func_name,
+        "request_id": request_id or "N/A"
+    }
+    
     try:
+        logger.debug("Calling contract function", context=log_context)
         func = getattr(contract.functions, func_name)
-        return func().call(block_identifier='latest')
+        result = func().call(block_identifier='latest')
+        
+        logger.debug(
+            "Contract function call successful",
+            context={
+                **log_context,
+                "result": str(result)[:100] + ('...' if len(str(result)) > 100 else ''),
+                "result_type": type(result).__name__,
+                "duration_seconds": f"{time.time() - start_time:.4f}"
+            }
+        )
+        return result
+        
     except Exception as e:
         logger.warning(
-            f"Failed to call {func_name}",
+            f"Contract function call failed: {func_name}",
             context={
+                **log_context,
                 "error": str(e),
                 "error_type": type(e).__name__,
-                "token_address": token_address,
-                "function": func_name
-            }
+                "duration_seconds": f"{time.time() - start_time:.4f}",
+                "available_functions": [f for f in dir(contract.functions) if not f.startswith('_')]
+            },
+            exc_info=True
         )
         return default
 
 
-def _get_token_supply(contract: Any, decimals: int, token_address: str) -> Dict[str, Any]:
-    """Get and normalize token supply with error handling."""
+def _get_token_supply(contract: Any, decimals: int, token_address: str, request_id: str = None) -> Dict[str, Any]:
+    """
+    Get and normalize token supply with error handling.
+    
+    Args:
+        contract: Web3 contract instance
+        decimals: Number of decimal places for the token
+        token_address: Token contract address
+        request_id: Optional request ID for correlation
+        
+    Returns:
+        Dictionary containing normalized and raw token supply
+    """
+    start_time = time.time()
+    log_context = {
+        "token_address": token_address,
+        "decimals": decimals,
+        "request_id": request_id or "N/A"
+    }
+    
     try:
+        logger.debug("Fetching token supply", context=log_context)
         raw_supply = contract.functions.totalSupply().call()
         normalized_supply = float(Decimal(str(raw_supply)) / (10 ** decimals))
-        return {
+        
+        result = {
             "totalSupply": normalized_supply,
             "rawTotalSupply": str(raw_supply)
         }
+        
+        logger.debug(
+            "Successfully fetched token supply",
+            context={
+                **log_context,
+                "raw_supply": str(raw_supply),
+                "normalized_supply": normalized_supply,
+                "duration_seconds": f"{time.time() - start_time:.4f}"
+            }
+        )
+        return result
+        
     except Exception as e:
         logger.error(
-            "Error getting token supply",
+            "Failed to get token supply",
             context={
+                **log_context,
                 "error": str(e),
-                "token_address": token_address,
-                "decimals": decimals
-            }
+                "error_type": type(e).__name__,
+                "duration_seconds": f"{time.time() - start_time:.4f}"
+            },
+            exc_info=True
         )
         return {"totalSupply": 0, "rawTotalSupply": "0"}
 
 
-def _initialize_web3_with_retry(max_retries: int = 3, retry_delay: int = 2) -> Web3:
-    """Initialize Web3 with connection pooling and retry logic.
+def _initialize_web3_with_retry(max_retries: int = 3, retry_delay: int = 2, request_id: str = None) -> Web3:
+    """
+    Initialize Web3 with connection pooling and retry logic.
     
     Args:
         max_retries: Maximum number of connection attempts
         retry_delay: Initial delay between retries in seconds
+        request_id: Optional request ID for correlation
         
     Returns:
         Initialized Web3 instance
@@ -112,19 +242,34 @@ def _initialize_web3_with_retry(max_retries: int = 3, retry_delay: int = 2) -> W
         ValueError: If BSC_RPC_URL is not configured
         ConnectionError: If connection fails after all retries
     """
+    start_time = time.time()
+    log_context = {
+        "request_id": request_id or "N/A",
+        "max_retries": max_retries,
+        "retry_delay": retry_delay,
+        "rpc_url": BSC_RPC_URL[:20] + "..." + BSC_RPC_URL[-10:] if BSC_RPC_URL else "Not configured"
+    }
+    
     if not BSC_RPC_URL:
         error_msg = "BSC_RPC_URL is not configured in environment variables"
-        logger.critical(error_msg)
+        logger.critical(
+            error_msg,
+            context={
+                **log_context,
+                "duration_seconds": f"{time.time() - start_time:.4f}"
+            }
+        )
         raise ValueError(error_msg)
     
     web3_timeout = 30
-    logger.debug(
+    logger.info(
         "Initializing Web3 provider with connection pooling",
         context={
+            **log_context,
             "timeout_seconds": web3_timeout,
-            "max_retries": max_retries,
-            "retry_delay": retry_delay,
-            "rpc_url": BSC_RPC_URL
+            "pool_connections": 5,
+            "pool_maxsize": 10,
+            "http_retries": 3
         }
     )
     
@@ -151,10 +296,15 @@ def _initialize_web3_with_retry(max_retries: int = 3, retry_delay: int = 2) -> W
     last_exception = None
     
     for attempt in range(1, max_retries + 1):
+        attempt_start = time.time()
         try:
             logger.debug(
                 f"Testing BSC node connection (attempt {attempt}/{max_retries})",
-                context={"attempt": attempt, "max_retries": max_retries}
+                context={
+                    **log_context,
+                    "attempt": attempt,
+                    "attempt_start_time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(attempt_start))
+                }
             )
             
             # Perform a lightweight operation to test the connection
@@ -165,27 +315,34 @@ def _initialize_web3_with_retry(max_retries: int = 3, retry_delay: int = 2) -> W
             logger.info(
                 "Successfully connected to BSC node",
                 context={
+                    **log_context,
                     "chain_id": chain_id,
                     "block_number": block_number,
                     "node_version": client_version,
                     "attempt": attempt,
-                    "rpc_url": BSC_RPC_URL
+                    "attempt_duration_seconds": f"{time.time() - attempt_start:.4f}",
+                    "total_duration_seconds": f"{time.time() - start_time:.4f}"
                 }
             )
             return w3
             
         except Exception as e:
             last_exception = e
+            duration = time.time() - attempt_start
+            
             if attempt < max_retries:
                 logger.warning(
-                    f"BSC node connection attempt {attempt} failed",
+                    f"BSC node connection attempt {attempt} failed, retrying...",
                     context={
+                        **log_context,
                         "error": str(e),
                         "error_type": type(e).__name__,
                         "retry_in_seconds": retry_delay * attempt,
                         "attempt": attempt,
-                        "max_retries": max_retries
-                    }
+                        "attempt_duration_seconds": f"{duration:.4f}",
+                        "total_duration_seconds": f"{time.time() - start_time:.4f}"
+                    },
+                    exc_info=True
                 )
                 time.sleep(retry_delay * attempt)  # Exponential backoff
             else:
@@ -193,22 +350,28 @@ def _initialize_web3_with_retry(max_retries: int = 3, retry_delay: int = 2) -> W
                 logger.critical(
                     error_msg,
                     context={
-                        "rpc_url": BSC_RPC_URL,
-                        "timeout_seconds": web3_timeout,
+                        **log_context,
                         "last_error": str(last_exception),
                         "error_type": type(last_exception).__name__,
-                        "total_attempts": max_retries
+                        "total_attempts": max_retries,
+                        "attempt_duration_seconds": f"{duration:.4f}",
+                        "total_duration_seconds": f"{time.time() - start_time:.4f}"
                     },
                     exc_info=True
                 )
-                raise ConnectionError(f"❌ {error_msg}: {str(last_exception)}") from last_exception
-    
-    # This should never be reached due to the raise in the else clause
-    raise ConnectionError("❌ Failed to establish connection to BSC node")
+                raise ConnectionError(error_msg) from last_exception
 
 
-def _initialize_contract(w3: Web3, token_address: str, abi: Any, max_retries: int = 3, retry_delay: int = 2) -> Any:
-    """Initialize a contract instance with retry logic.
+def _initialize_contract(
+    w3: Web3, 
+    token_address: str, 
+    abi: Any, 
+    max_retries: int = 3, 
+    retry_delay: int = 2,
+    request_id: str = None
+) -> Any:
+    """
+    Initialize a contract instance with retry logic.
     
     Args:
         w3: Web3 instance
@@ -216,6 +379,7 @@ def _initialize_contract(w3: Web3, token_address: str, abi: Any, max_retries: in
         abi: Contract ABI
         max_retries: Maximum number of initialization attempts
         retry_delay: Delay between retries in seconds
+        request_id: Optional request ID for correlation
         
     Returns:
         Initialized contract instance
@@ -223,240 +387,202 @@ def _initialize_contract(w3: Web3, token_address: str, abi: Any, max_retries: in
     Raises:
         Exception: If contract initialization fails after all retries
     """
+    start_time = time.time()
+    log_context = {
+        "token_address": token_address,
+        "max_retries": max_retries,
+        "retry_delay": retry_delay,
+        "request_id": request_id or "N/A",
+        "abi_length": len(abi) if abi else 0
+    }
+    
+    logger.info(
+        "Initializing contract instance",
+        context=log_context
+    )
+    
     last_error = None
     
     for attempt in range(1, max_retries + 1):
+        attempt_start = time.time()
         try:
             logger.debug(
                 f"Creating contract instance (attempt {attempt}/{max_retries})",
                 context={
+                    **log_context,
                     "attempt": attempt,
-                    "max_retries": max_retries,
-                    "token_address": token_address
+                    "attempt_start_time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(attempt_start))
                 }
             )
             
+            # Create contract instance
+            checksum_address = Web3.to_checksum_address(token_address)
             contract = w3.eth.contract(
-                address=Web3.to_checksum_address(token_address),
+                address=checksum_address,
                 abi=abi
             )
             
             # Test contract functions
-            contract_name = contract.functions.name().call(block_identifier='latest')
-            logger.debug(
+            contract_name = _safe_contract_call(
+                contract=contract,
+                func_name="name",
+                token_address=token_address,
+                default="Unknown",
+                request_id=request_id
+            )
+            
+            logger.info(
                 "Successfully created and tested contract instance",
-                context={"contract_name": contract_name}
+                context={
+                    **log_context,
+                    "contract_name": contract_name,
+                    "checksum_address": checksum_address,
+                    "attempt": attempt,
+                    "attempt_duration_seconds": f"{time.time() - attempt_start:.4f}",
+                    "total_duration_seconds": f"{time.time() - start_time:.4f}"
+                }
             )
             return contract
             
         except Exception as e:
             last_error = e
+            duration = time.time() - attempt_start
+            
             if attempt < max_retries:
                 logger.warning(
-                    f"Contract initialization attempt {attempt} failed",
+                    f"Contract initialization attempt {attempt} failed, retrying...",
                     context={
+                        **log_context,
                         "error": str(e),
                         "error_type": type(e).__name__,
                         "retry_in_seconds": retry_delay * attempt,
                         "attempt": attempt,
-                        "max_retries": max_retries
-                    }
-                )
-                time.sleep(retry_delay * attempt)
-            else:
-                logger.critical(
-                    f"Failed to initialize contract after {max_retries} attempts",
-                    context={
-                        "token_address": token_address,
-                        "last_error": str(last_error),
-                        "error_type": type(last_error).__name__
+                        "attempt_duration_seconds": f"{duration:.4f}",
+                        "total_duration_seconds": f"{time.time() - start_time:.4f}"
                     },
                     exc_info=True
                 )
-                raise
+                time.sleep(retry_delay * attempt)  # Exponential backoff
+            else:
+                error_msg = f"Failed to initialize contract after {max_retries} attempts"
+                logger.critical(
+                    error_msg,
+                    context={
+                        **log_context,
+                        "last_error": str(last_error),
+                        "error_type": type(last_error).__name__,
+                        "total_attempts": max_retries,
+                        "attempt_duration_seconds": f"{duration:.4f}",
+                        "total_duration_seconds": f"{time.time() - start_time:.4f}"
+                    },
+                    exc_info=True
+                )
+                raise Exception(error_msg) from last_error
 
 
-def _fetch_token_metadata(web3: Web3, token_address: str) -> Dict[str, Any]:
+def _fetch_token_metadata(web3: Web3, token_address: str, request_id: str = None) -> Dict[str, Any]:
     """
-    Fetch token metadata using Web3.
+    Fetch token metadata from the blockchain.
     
     Args:
         web3: Web3 instance
         token_address: Token contract address
+        request_id: Optional request ID for correlation
         
     Returns:
         Dictionary containing token metadata
     """
-    abi = _get_contract_abi()
+    start_time = time.time()
+    log_context = {
+        "token_address": token_address,
+        "request_id": request_id or "N/A"
+    }
+    
+    logger.info(
+        "Starting token metadata fetch from blockchain",
+        context=log_context
+    )
     
     try:
-        contract = _initialize_contract(web3, token_address, abi)
+        # Get token ABI (try BscScan first, fallback to minimal ABI)
+        token_abi = _get_contract_abi(token_address)
+        logger.debug(
+            "Retrieved token ABI", 
+            context={
+                **log_context,
+                "abi_length": len(token_abi) if token_abi else 0
+            }
+        )
         
-        # Fetch token details with safe calls
-        token_details = {
-            "name": _safe_contract_call(contract, "name", token_address, "Unknown"),
-            "symbol": _safe_contract_call(contract, "symbol", token_address, "UNKNOWN"),
-            "decimals": _safe_contract_call(contract, "decimals", token_address, 18)
+        contract = _initialize_contract(
+            w3=web3, 
+            token_address=token_address, 
+            abi=token_abi,
+            request_id=request_id
+        )
+        
+        # Get token details with safe contract calls
+        logger.debug("Fetching token details", context=log_context)
+        name = _safe_contract_call(contract, "name", token_address, "Unknown", request_id)
+        symbol = _safe_contract_call(contract, "symbol", token_address, "UNKNOWN", request_id)
+        decimals = _safe_contract_call(contract, "decimals", token_address, 18, request_id)
+        
+        logger.debug(
+            "Token details retrieved", 
+            context={
+                **log_context,
+                "token_name": name,
+                "token_symbol": symbol,
+                "decimals": decimals
+            }
+        )
+        
+        # Get token supply with proper error handling
+        supply_info = _get_token_supply(contract, decimals, token_address, request_id)
+        
+        result = {
+            "name": name,
+            "symbol": symbol,
+            "decimals": decimals,
+            **supply_info
         }
         
-        # Get token supply
-        supply_data = _get_token_supply(contract, token_details["decimals"], token_address)
-        token_details.update(supply_data)
+        logger.info(
+            "Successfully fetched token metadata from blockchain",
+            context={
+                **log_context,
+                **result,
+                "total_duration_seconds": f"{time.time() - start_time:.4f}"
+            }
+        )
         
-        return token_details
+        return result
         
     except Exception as e:
-        logger.error(
-            "Error fetching token metadata",
+        _handle_metadata_failure(
+            token_address=token_address,
+            error=e,
             context={
-                "error": str(e),
-                "error_type": type(e).__name__,
-                "token_address": token_address
+                **log_context,
+                "duration_seconds": f"{time.time() - start_time:.4f}"
             },
-            exc_info=True
+            request_id=request_id
         )
-        raise
-
-
-def _initialize_web3_with_retry(max_retries: int = 3, retry_delay: int = 2) -> Web3:
-    """
-    Initialize Web3 with retry logic.
-    
-    Args:
-        max_retries: Maximum number of retry attempts
-        retry_delay: Delay between retries in seconds
         
-    Returns:
-        Initialized Web3 instance
-        
-    Raises:
-        ConnectionError: If all retry attempts fail
-    """
-    last_error = None
-    
-    for attempt in range(1, max_retries + 1):
-        try:
-            logger.debug(
-                f"Initializing Web3 (attempt {attempt}/{max_retries})",
-                context={"rpc_url": BSC_RPC_URL}
-            )
-            
-            web3 = Web3(Web3.HTTPProvider(
-                BSC_RPC_URL,
-                request_kwargs={
-                    'timeout': 30,
-                    'proxies': {},
-                    'headers': {'Content-Type': 'application/json'}
-                }
-            ))
-            
-            # Add retry middleware for POA chains like BSC
-            from web3.middleware import geth_poa_middleware
-            web3.middleware_onion.inject(geth_poa_middleware, layer=0)
-            
-            # Test connection
-            web3.eth.chain_id
-            
-            logger.info(
-                "Successfully connected to BSC node",
-                context={
-                    "chain_id": web3.eth.chain_id,
-                    "block_number": web3.eth.block_number,
-                    "node_version": web3.client_version,
-                    "attempt": attempt
-                }
-            )
-            
-            return web3
-            
-        except Exception as e:
-            last_error = e
-            if attempt < max_retries:
-                logger.warning(
-                    f"Web3 initialization attempt {attempt} failed",
-                    context={
-                        "error": str(e),
-                        "error_type": type(e).__name__,
-                        "retry_in_seconds": retry_delay * attempt,
-                        "attempt": attempt,
-                        "max_retries": max_retries
-                    }
-                )
-                time.sleep(retry_delay * attempt)
-    
-    raise ConnectionError(
-        f"Failed to initialize Web3 after {max_retries} attempts: {str(last_error)}"
-    ) from last_error
-
-
-def _initialize_contract(web3: Web3, token_address: str, abi: list) -> Any:
-    """
-    Initialize a contract instance with retry logic.
-    
-    Args:
-        web3: Web3 instance
-        token_address: Token contract address
-        abi: Contract ABI
-        
-    Returns:
-        Contract instance
-        
-    Raises:
-        ValueError: If contract initialization fails
-    """
-    max_retries = 3
-    retry_delay = 2
-    last_error = None
-    
-    for attempt in range(1, max_retries + 1):
-        try:
-            logger.debug(
-                f"Initializing contract (attempt {attempt}/{max_retries})",
-                context={"token_address": token_address}
-            )
-            
-            contract = web3.eth.contract(
-                address=Web3.to_checksum_address(token_address),
-                abi=abi
-            )
-            
-            # Test contract functions
-            contract.functions.name().call(block_identifier='latest')
-            
-            logger.info(
-                "Successfully initialized contract",
-                context={
-                    "token_address": token_address,
-                    "attempt": attempt
-                }
-            )
-            
-            return contract
-            
-        except Exception as e:
-            last_error = e
-            if attempt < max_retries:
-                logger.warning(
-                    f"Contract initialization attempt {attempt} failed",
-                    context={
-                        "error": str(e),
-                        "error_type": type(e).__name__,
-                        "retry_in_seconds": retry_delay * attempt,
-                        "attempt": attempt,
-                        "max_retries": max_retries
-                    }
-                )
-                time.sleep(retry_delay * attempt)
-    
-    error_msg = f"Failed to initialize contract after {max_retries} attempts: {str(last_error)}"
-    logger.error(error_msg, context={"token_address": token_address})
-    raise ValueError(error_msg) from last_error
-
+        # Return default values on failure
+        return {
+            "name": "Unknown",
+            "symbol": "UNKNOWN",
+            "decimals": 18,
+            "totalSupply": 0,
+            "rawTotalSupply": "0"
+        }
 
 def _get_token_supply(
     contract: Any,
     decimals: int,
-    token_address: str
+    token_address: str,
+    request_id: str = None
 ) -> Dict[str, Any]:
     """Get and normalize token supply."""
     try:
@@ -544,7 +670,8 @@ def _create_metadata_response(token_address: str, token_details: Dict[str, Any])
 def _handle_metadata_failure(
     token_address: str,
     error: Exception,
-    context: Optional[Dict[str, Any]] = None
+    context: Optional[Dict[str, Any]] = None,
+    request_id: str = None
 ) -> None:
     """
     Handle metadata fetch failures with appropriate logging.
@@ -553,22 +680,53 @@ def _handle_metadata_failure(
         token_address: The token contract address
         error: The exception that was raised
         context: Additional context for logging
+        request_id: Optional request ID for correlation
     """
     context = context or {}
     context.update({
         "token_address": token_address,
         "error_type": type(error).__name__,
-        "error": str(error)
+        "error": str(error),
+        "request_id": request_id or "N/A"
     })
     
+    # Add traceback for debugging if in debug mode
+    import traceback
+    context["traceback"] = traceback.format_exc()
+    
+    # Log based on error type with appropriate level and context
     if isinstance(error, (requests.exceptions.RequestException, ConnectionError)):
-        logger.error("Network error while fetching metadata", context=context, exc_info=True)
+        logger.error(
+            "Network error while fetching token metadata", 
+            context=context,
+            exc_info=True
+        )
     elif isinstance(error, (ContractLogicError, BadFunctionCallOutput, ValueError)):
-        logger.error("Contract error while fetching metadata", context=context, exc_info=True)
+        logger.error(
+            "Contract error while fetching token metadata", 
+            context=context,
+            exc_info=True
+        )
     elif isinstance(error, Web3Exception):
-        logger.critical("Blockchain error while fetching metadata", context=context, exc_info=True)
+        logger.critical(
+            "Blockchain error while fetching token metadata", 
+            context=context,
+            exc_info=True
+        )
     else:
-        logger.critical("Unexpected error while fetching metadata", context=context, exc_info=True)
+        logger.critical(
+            "Unexpected error while fetching token metadata", 
+            context=context,
+            exc_info=True  # Always include full traceback for unexpected errors
+        )
+    
+    # Log additional context if available
+    if hasattr(error, 'args') and error.args:
+        logger.debug("Error arguments", context={"error_args": str(error.args)})
+        
+    # Log request ID for correlation if available
+    if request_id:
+        logger.debug("Request ID for error correlation", context={"request_id": request_id})
 
 
 def fetch_token_metadata(token_address: str) -> TokenMetadata:
