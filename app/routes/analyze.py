@@ -3,15 +3,13 @@ Analysis routes for token analysis operations.
 """
 """Token analysis routes for risk assessment and metrics."""
 
-import logging
 import traceback
 import time
-import json
 from typing import Optional, Dict, Any, Union
-from fastapi import APIRouter, Request, HTTPException, status
+from fastapi import APIRouter, Request, HTTPException
 
-from app.schemas.analyze_response import AnalyzeResponse, Severity, Risk, Score
-from app.services.analyzer import analyze_token
+from app.schemas.analyze_response import AnalyzeResponse
+from app.services.analyzer import analyze_token as analyze_token_service
 from app.core.utils.logger import get_logger
 
 # Get logger for this module
@@ -102,7 +100,7 @@ async def analyze_token(
         )
         
         try:
-            result = await analyze_token(token_address, lp_token_address=lp_token)
+            result = await analyze_token_service(token_address=token_address, lp_token_address=lp_token)
             elapsed_time = time.time() - start_time
             
             # Verify result is valid

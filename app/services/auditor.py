@@ -138,7 +138,29 @@ async def audit_token(token_address: str, lp_token_address: Optional[str] = None
             "Executando análise dinâmica",
             context={"request_id": request_id}
         )
-        dynamic_results = analyze_dynamic(metadata)
+        dynamic_alerts = {}
+        try:
+            dynamic_alerts = analyze_dynamic(source)
+        except Exception as e:
+            logger.warning("Dynamic analysis skipped due to error", context={"error": str(e), "token_address": token_address})
+            dynamic_alerts = {
+                "honeypot": {
+                    "is_honeypot": False,
+                    "buy_success": None,
+                    "sell_success": None,
+                    "high_tax": None,
+                    "tax_discrepancy": None,
+                    "error": str(e)
+                },
+                "fees": {
+                    "buy": 0.0,
+                    "sell": 0.0,
+                    "buy_slippage": 0.0,
+                    "sell_slippage": 0.0,
+                    "buy_mutable": False,
+                    "sell_mutable": False
+                }
+            }
         
         # 4. Executar análise on-chain
         logger.debug(
@@ -155,7 +177,7 @@ async def audit_token(token_address: str, lp_token_address: Optional[str] = None
             "Calculando pontuação de risco",
             context={"request_id": request_id}
         )
-        risk_score = calculate_risk_score(static_results, dynamic_results, onchain_results)
+        risk_score = calculate_risk_score(static_results, dynamic_alerts, onchain_results)
         
         # 6. Preparar resultados finais
         end_time = datetime.utcnow()
@@ -171,7 +193,7 @@ async def audit_token(token_address: str, lp_token_address: Optional[str] = None
             "risk_score": risk_score,
             "analysis": {
                 "static": static_results,
-                "dynamic": dynamic_results,
+                "dynamic": dynamic_alerts,
                 "onchain": onchain_results
             }
         }
@@ -218,197 +240,3 @@ async def audit_token(token_address: str, lp_token_address: Optional[str] = None
                 "mensagem": str(e)
             }
         }
-        
-        # 4. Calculate Risk Score
-        logger.info("Calculating risk score", context={"request_id": request_id})
-        try:
-            # Get analysis results
-            analysis_results = {
-                "static": static_results,
-                "dynamic": dynamic_results,
-                "onchain": onchain_results
-            }
-            
-            logger.debug(
-                "Gathering analysis results for risk calculation",
-                context={
-                    "request_id": request_id,
-                    "static_alerts": len(static_results.get("alerts", [])),
-                    "has_dynamic_analysis": bool(dynamic_results),
-                    "onchain_alerts": len(onchain_results.get("alerts", []))
-                }
-            )
-            
-            risk_result = calculate_risk_score(
-                static_results, 
-                dynamic_results,
-                onchain_results
-            )
-            
-            # Store risk assessment results
-            risk_score = risk_result.get("score", 0)
-            risk_level = risk_result.get("grade", "F")
-            
-            results.update({
-                "risk_score": risk_score,
-                "risk_level": risk_level,
-                "risk_details": {
-                    "alerts": risk_result.get("alerts", []),
-                    "warnings": risk_result.get("warnings", []),
-                    "risks": risk_result.get("risks", []),
-                    "score_breakdown": risk_result.get("score_breakdown", {})
-                }
-            })
-            
-            logger.info(
-                "Risk assessment completed",
-                context={
-                    "request_id": request_id,
-                    "score": risk_score,
-                    "level": risk_level,
-                    "alerts_count": len(risk_result.get("alerts", [])),
-                    "warnings_count": len(risk_result.get("warnings", [])),
-                    "risks_count": len(risk_result.get("risks", []))
-                }
-            )
-            
-        except Exception as e:
-            error_msg = f"Risk calculation failed: {str(e)}"
-            logger.error(
-                error_msg,
-                context={
-                    "request_id": request_id,
-                    "token_address": token_address
-                },
-                exc_info=True
-            )
-            # Set default risk values
-            results.update({
-                "risk_score": 0,
-                "risk_level": "F",
-                "risk_details": {
-                    "error": error_msg,
-                    "alerts": [],
-                    "warnings": [],
-                    "risks": [],
-                    "score_breakdown": {}
-                }
-            })
-        
-        # 5. Generate Summary
-        logger.debug("Generating audit summary", context={"request_id": request_id})
-        try:
-            # Calculate total alerts across all analysis types
-            total_alerts = sum(
-                len(analysis.get("alerts", [])) 
-                for analysis in results["analysis"].values()
-                if isinstance(analysis, dict)
-            )
-            
-            # Check for critical issues
-            has_critical_issues = any(
-                alert.get("severity") == "critical"
-                for analysis in results["analysis"].values()
-                if isinstance(analysis, dict)
-                for alert in analysis.get("alerts", [])
-            )
-            
-            # Calculate audit duration
-            audit_duration = (datetime.utcnow() - start_time).total_seconds()
-            
-            results["summary"] = {
-                "has_critical_issues": has_critical_issues,
-                "total_alerts": total_alerts,
-                "audit_duration_seconds": audit_duration,
-                "analysis_types_completed": [
-                    analysis_type 
-                    for analysis_type, result in results["analysis"].items()
-                    if isinstance(result, dict)
-                ]
-            }
-            
-            logger.info(
-                "Audit summary generated",
-                context={
-                    "request_id": request_id,
-                    "has_critical_issues": has_critical_issues,
-                    "total_alerts": total_alerts,
-                    "audit_duration_seconds": round(audit_duration, 2)
-                }
-            )
-            
-        except Exception as e:
-            error_msg = f"Error generating audit summary: {str(e)}"
-            logger.error(
-                error_msg,
-                context={
-                    "request_id": request_id,
-                    "token_address": token_address
-                },
-                exc_info=True
-            )
-            results["summary"] = {
-                "error": error_msg,
-                "has_critical_issues": True,
-                "total_alerts": 0,
-                "audit_duration_seconds": (datetime.utcnow() - start_time).total_seconds()
-            }
-        
-        # Final audit completion log
-        audit_duration = results["summary"]["audit_duration_seconds"]
-        logger.info(
-            "Token audit completed successfully",
-            context={
-                "request_id": request_id,
-                "token_address": token_address,
-                "risk_score": results.get("risk_score"),
-                "risk_level": results.get("risk_level"),
-                "total_alerts": results["summary"].get("total_alerts", 0),
-                "has_critical_issues": results["summary"].get("has_critical_issues", True),
-                "duration_seconds": round(audit_duration, 2),
-                "timestamp": datetime.utcnow().isoformat()
-            }
-        )
-        
-        return results
-        
-    except Exception as e:
-        audit_duration = (datetime.utcnow() - start_time).total_seconds()
-        error_id = f"err_{uuid.uuid4().hex[:8]}"
-        error_msg = f"Critical error during token audit: {str(e)}"
-        
-        logger.critical(
-            "Token audit failed",
-            context={
-                "request_id": request_id,
-                "error_id": error_id,
-                "token_address": token_address,
-                "error_type": type(e).__name__,
-                "error_message": str(e),
-                "duration_seconds": round(audit_duration, 2),
-                "traceback": traceback.format_exc()
-            },
-            exc_info=True
-        )
-        
-        # Return error response with as much info as possible
-        error_response = {
-            "audit_id": request_id,
-            "token_address": token_address,
-            "lp_token_address": lp_token_address,
-            "timestamp": datetime.utcnow().isoformat(),
-            "status": "error",
-            "error": {
-                "id": error_id,
-                "type": type(e).__name__,
-                "message": str(e),
-                "traceback": traceback.format_exc()
-            },
-            "audit_duration_seconds": audit_duration
-        }
-        
-        # Include any partial analysis results if available
-        if 'results' in locals():
-            error_response["analysis"] = results.get("analysis", {})
-        
-        return error_response

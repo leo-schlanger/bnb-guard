@@ -99,7 +99,29 @@ async def analyze_token(token_address: str, lp_token_address: Optional[str] = No
 
         # Dynamic Analysis
         logger.debug("Performing dynamic analysis...")
-        dynamic_alerts = analyze_dynamic(source)
+        dynamic_alerts = {}
+        try:
+            dynamic_alerts = analyze_dynamic(source)
+        except Exception as e:
+            logger.warning("Dynamic analysis skipped due to error", context={"error": str(e), "token_address": token_address})
+            dynamic_alerts = {
+                "honeypot": {
+                    "is_honeypot": False,
+                    "buy_success": None,
+                    "sell_success": None,
+                    "high_tax": None,
+                    "tax_discrepancy": None,
+                    "error": str(e)
+                },
+                "fees": {
+                    "buy": 0.0,
+                    "sell": 0.0,
+                    "buy_slippage": 0.0,
+                    "sell_slippage": 0.0,
+                    "buy_mutable": False,
+                    "sell_mutable": False
+                }
+            }
         logger.debug(
             "Dynamic analysis completed",
             context={"is_honeypot": dynamic_alerts.get("honeypot", {}).get("is_honeypot", False)}
@@ -127,14 +149,14 @@ async def analyze_token(token_address: str, lp_token_address: Optional[str] = No
             "Analysis completed successfully",
             context={
                 "token_address": token_address,
-                "score": final["risk_score"],
+                "score": final["score"],
                 "grade": final["grade"]
             }
         )
 
         # Prepare score object
         score = {
-            "value": final["risk_score"],
+            "value": final["score"],
             "label": final["grade"]
         }
         

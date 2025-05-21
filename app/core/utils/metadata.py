@@ -1,14 +1,13 @@
 import json
 import time
 from decimal import Decimal
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import requests
 from web3 import Web3
 from web3.exceptions import (
     BadFunctionCallOutput,
     ContractLogicError,
-    Web3Exception,
 )
 
 from app.core.interfaces.analyzer import TokenMetadata
@@ -17,68 +16,66 @@ from config import BSCSCAN_API_KEY, BSC_RPC_URL
 
 logger = get_logger(__name__)
 
-def _get_bscscan_abi(contract_address: str) -> Optional[list]:
+def _get_bscscan_abi(contract_address: str) -> list | None:
     """
-    Fetch contract ABI from BscScan API.
-    
+    Fetches the ABI for a contract from BscScan.
+
     Args:
-        contract_address: The contract address to fetch ABI for
-        
+        contract_address: The token contract address.
+
     Returns:
-        list: The contract ABI or None if not found
+        The ABI as a list, or None if fetching fails.
     """
-    if not BSCSCAN_API_KEY:
-        logger.warning("BSCSCAN_API_KEY not configured")
-        return None
-        
-    url = f"https://api.bscscan.com/api"
-    params = {
-        "module": "contract",
-        "action": "getabi",
-        "address": contract_address,
-        "apikey": BSCSCAN_API_KEY
-    }
-    
     try:
+        url = "https://api.bscscan.com/api"
+        params = {
+            "module": "contract",
+            "action": "getabi",
+            "address": contract_address,
+            "apikey": BSCSCAN_API_KEY
+        }
+
         response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
-        
-        if data["status"] == "1" and data["message"] == "OK":
-            return json.loads(data["result"])
-            
-        logger.warning("Failed to fetch ABI from BscScan", context={
-            "status": data.get("status"),
-            "message": data.get("message"),
-            "result": data.get("result")
-        })
-        return None
-        
+
+        if data.get("status") == "1" and data.get("message") == "OK":
+            abi_str = data.get("result")
+            try:
+                abi = json.loads(abi_str)
+                if isinstance(abi, list):
+                    return abi
+                else:
+                    logger.warning("Parsed ABI is not a list", context={"contract_address": contract_address})
+            except Exception as parse_err:
+                logger.warning("Failed to parse ABI from BscScan", context={
+                    "error": str(parse_err),
+                    "contract_address": contract_address,
+                    "raw_result": abi_str
+                })
+        else:
+            logger.warning("Failed to fetch ABI from BscScan", context={
+                "status": data.get("status"),
+                "message": data.get("message"),
+                "result": data.get("result")
+            })
+
     except Exception as e:
         logger.warning("Error fetching ABI from BscScan", context={
             "error": str(e),
             "contract_address": contract_address
         })
-        return None
-
+    return None
 
 def _get_contract_abi(token_address: str = None) -> list:
     """
     Get contract ABI, trying BscScan first, falling back to minimal ABI.
-    
-    Args:
-        token_address: The token contract address (optional)
-        
-    Returns:
-        list: The contract ABI
     """
-    # Try to get ABI from BscScan if token address is provided
     if token_address and BSCSCAN_API_KEY:
         abi = _get_bscscan_abi(token_address)
-        if abi:
+        if abi and isinstance(abi, list):
             return abi
-    
-    # Fallback to minimal ABI
+
     return [
         {
             "constant": True,
@@ -117,7 +114,6 @@ def _get_contract_abi(token_address: str = None) -> list:
             "type": "function"
         }
     ]
-
 
 def _safe_contract_call(contract: Any, func_name: str, token_address: str, default: Any = None, request_id: str = None) -> Any:
     """
@@ -283,12 +279,11 @@ def _initialize_web3_with_retry(max_retries: int = 3, retry_delay: int = 2, requ
     session.mount('http://', adapter)
     session.mount('https://', adapter)
     
-    # Initialize Web3 with the session
+    # Initialize Web3 with timeout
     w3 = Web3(Web3.HTTPProvider(
         BSC_RPC_URL,
         request_kwargs={
-            'timeout': web3_timeout,
-            'session': session
+            'timeout': web3_timeout
         }
     ))
     
@@ -744,17 +739,11 @@ def _handle_metadata_failure(
             context=context,
             exc_info=True
         )
-    elif isinstance(error, Web3Exception):
+    elif isinstance(error, Exception):
         logger.critical(
             "Blockchain error while fetching token metadata", 
             context=context,
             exc_info=True
-        )
-    else:
-        logger.critical(
-            "Unexpected error while fetching token metadata", 
-            context=context,
-            exc_info=True  # Always include full traceback for unexpected errors
         )
     
     # Log additional context if available
@@ -868,7 +857,7 @@ def fetch_token_metadata(token_address: str) -> TokenMetadata:
         })
         raise ValueError(f"❌ Contract error: {str(e)}") from e
         
-    except Web3Exception as e:
+    except Exception as e:
         _handle_metadata_failure(token_address, e, {
             "rpc_url": BSC_RPC_URL,
             "time_elapsed_seconds": f"{time.time() - start_time:.2f}s"
@@ -880,226 +869,3 @@ def fetch_token_metadata(token_address: str) -> TokenMetadata:
             "time_elapsed_seconds": f"{time.time() - start_time:.2f}s"
         })
         raise Exception(f"❌ Unexpected error: {str(e)}") from e
-
-    # 2. Connect via Web3 to BNB Chain
-    web3_start_time = time.time()
-    logger.info(
-        "Initiating Web3 connection to BSC node",
-        context={
-            "rpc_url": BSC_RPC_URL,
-            "start_time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(web3_start_time))
-        }
-    )
-    
-    try:
-        # Initialize Web3 with retry logic
-        w3 = _initialize_web3_with_retry()
-        
-        # Process ABI and contract verification status
-        abi = metadata.get("ABI", "[]")
-        is_verified = abi != "Contract source code not verified"
-        
-        # Log ABI processing details
-        logger.debug(
-            "Processing contract ABI and verification status",
-            context={
-                "is_verified": is_verified,
-                "abi_length": len(abi) if is_verified else 0,
-                "contract_name": metadata.get("ContractName", "Unknown"),
-                "compiler_version": metadata.get("CompilerVersion", "unknown"),
-                "optimization_used": metadata.get("OptimizationUsed"),
-                "runs": metadata.get("Runs"),
-                "evm_version": metadata.get("EVMVersion")
-            }
-        )
-
-        # Handle unverified contracts
-        if not is_verified:
-            warning_msg = "Contract source code is not verified on BscScan"
-            logger.warning(
-                warning_msg,
-                context={
-                    "token_address": token_address,
-                    "contract_name": metadata.get("ContractName", "Unknown"),
-                    "proxy": metadata.get("Proxy") == "1",
-                    "implementation": metadata.get("Implementation"),
-                    "txn_count": metadata.get("TxnCount"),
-                    "balance": metadata.get("Balance")
-                }
-            )
-            
-            metadata.update({
-                "name": "N/A (Unverified)",
-                "symbol": "N/A",
-                "totalSupply": 0,
-                "decimals": 0,
-                "is_verified": False,
-                "verification_status": "unverified"
-            })
-            
-            # Additional checks for potential proxy contracts
-            if metadata.get("Proxy") == "1":
-                implementation = metadata.get("Implementation")
-                if implementation:
-                    logger.info(
-                        "Unverified contract appears to be a proxy",
-                        context={
-                            "token_address": token_address,
-                            "implementation_address": implementation
-                        }
-                    )
-                    metadata["is_proxy"] = True
-                    metadata["implementation"] = implementation
-            
-            return metadata
-
-        # Create contract instance with detailed error handling and logging
-        contract_start_time = time.time()
-        logger.info(
-            "Initializing Web3 contract instance",
-            context={
-                "token_address": token_address,
-                "abi_length": len(abi) if abi else 0,
-                "contract_name": metadata.get("ContractName", "Unknown")
-            }
-        )
-        
-        try:
-            # Initialize contract with retry logic
-            contract = _initialize_contract(w3, token_address, abi)
-            
-            # Fetch token details with individual error handling for each field
-            token_details = {}
-            
-            # Get token details
-            logger.info("Fetching token details from contract")
-            
-            # Get token name with fallback
-            token_details["name"] = _safe_contract_call(contract, "name", token_address, "Unknown")
-            
-            # Get token symbol with fallback
-            token_details["symbol"] = _safe_contract_call(contract, "symbol", token_address, "UNKNOWN")
-            
-            # Get token decimals with fallback (default to 18 if not available)
-            token_details["decimals"] = _safe_contract_call(contract, "decimals", token_address, 18)
-            
-            # Get total supply with fallback
-            raw_total_supply = _safe_contract_call(contract, "totalSupply", token_address, 0)
-            
-            # Calculate normalized supply
-            try:
-                decimals = token_details["decimals"]
-                normalized_supply = float(Decimal(str(raw_total_supply)) / (10 ** decimals))
-                token_details["totalSupply"] = normalized_supply
-                token_details["rawTotalSupply"] = str(raw_total_supply)  # Keep original as string to avoid precision loss
-            except Exception as e:
-                logger.error(
-                    "Error normalizing total supply",
-                    context={
-                        "error": str(e),
-                        "decimals": token_details["decimals"],
-                        "raw_total_supply": str(raw_total_supply)
-                    }
-                )
-                token_details["totalSupply"] = 0
-            
-            # Log successful fetch
-            contract_duration = time.time() - contract_start_time
-            logger.info(
-                "Successfully fetched token details from contract",
-                context={
-                    **token_details,
-                    "contract_duration_seconds": round(contract_duration, 3),
-                    "is_proxy": metadata.get("is_proxy", False),
-                    "implementation": metadata.get("implementation")
-                }
-            )
-            
-            # Update metadata with token details
-            metadata.update({
-                "name": token_details["name"],
-                "symbol": token_details["symbol"],
-                "decimals": token_details["decimals"],
-                "totalSupply": token_details["totalSupply"],
-                "rawTotalSupply": token_details.get("rawTotalSupply", "0"),
-                "is_verified": True,
-                "verification_status": "verified"
-            })
-            
-            # Add additional metadata if available
-            metadata["contract_created"] = time.strftime("%Y-%m-%d %H:%M:%S")
-            metadata["source"] = "bscscan_and_web3"
-            
-            return metadata
-            
-        except requests.exceptions.RequestException as e:
-            error_msg = f"Network error while interacting with contract: {str(e)}"
-            logger.error(
-                error_msg,
-                context={
-                    "token_address": token_address,
-                    "error_type": type(e).__name__,
-                    "rpc_url": BSC_RPC_URL,
-                    "time_since_start": f"{time.time() - start_time:.2f}s"
-                },
-                exc_info=True
-            )
-            raise ConnectionError(f"❌ {error_msg}") from e
-            
-        except web3.exceptions.ContractLogicError as e:
-            error_msg = f"Contract logic error: {str(e)}"
-            logger.error(
-                error_msg,
-                context={
-                    "token_address": token_address,
-                    "error_type": type(e).__name__,
-                    "contract_methods": [f for f in dir(contract.functions) if not f.startswith('_')],
-                    "abi_methods": [f for f in abi if f.get('type') == 'function']
-                },
-                exc_info=True
-            )
-            raise ValueError(f"❌ {error_msg}") from e
-            
-        except web3.exceptions.BadFunctionCallOutput as e:
-            error_msg = f"Bad function call output - contract may not be fully initialized or ABI mismatch: {str(e)}"
-            logger.error(
-                error_msg,
-                context={
-                    "token_address": token_address,
-                    "error_type": type(e).__name__,
-                    "is_proxy": metadata.get("is_proxy", False),
-                    "implementation": metadata.get("implementation")
-                },
-                exc_info=True
-            )
-            raise ValueError(f"❌ {error_msg}") from e
-            
-        except web3.exceptions.Web3Exception as e:
-            error_msg = f"Web3 error: {str(e)}"
-            logger.critical(
-                error_msg,
-                context={
-                    "error_type": type(e).__name__,
-                    "rpc_url": BSC_RPC_URL,
-                    "token_address": token_address,
-                    "time_elapsed_seconds": f"{time.time() - start_time:.2f}s"
-                },
-                exc_info=True
-            )
-            raise ConnectionError(f"❌ {error_msg}") from e
-                
-    finally:
-        # Log completion metrics
-        total_duration = time.time() - start_time
-        success = 'e' not in locals() or not isinstance(e, Exception)
-        logger.info(
-            "Completed token metadata fetch",
-            context={
-                "token_address": token_address,
-                "total_duration_seconds": round(total_duration, 3),
-                "success": success,
-                "contract_name": metadata.get("ContractName", "Unknown"),
-                "is_verified": metadata.get("is_verified", False),
-                "is_proxy": metadata.get("is_proxy", False)
-            }
-        )
