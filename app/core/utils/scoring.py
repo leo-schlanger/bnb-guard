@@ -1,7 +1,6 @@
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Dict, Any, Optional
 import time
 import traceback
-from app.core.interfaces.analyzer import Alert
 from app.core.utils.logger import get_logger
 
 # Initialize logger
@@ -90,32 +89,55 @@ def calculate_risk_score(
             return adjustment
         
         # 🎯 Critical Functions Analysis
-        dangerous_functions = static_alerts.get("functions", [])
+        # 🎯 Filter only real function alerts, exclude internal error entries
+        raw_static_functions = static_alerts.get("functions", [])
+
+        dangerous_functions = [
+            f for f in raw_static_functions
+            if f.get("type") not in ["analysis_error", "source_code"]
+        ]
+
+        # 🛑 Handle static analysis failure separately
+        for item in raw_static_functions:
+            if item.get("type") == "analysis_error":
+                alerts.append({
+                    "type": "static_analysis_error",
+                    "severity": item.get("severity", "critical"),
+                    "message": item.get("message", "Static analysis failed"),
+                    "details": {}
+                })
+                risks.append({
+                    "type": "static_analysis_error",
+                    "description": item.get("message", "Static analysis failed"),
+                    "severity": "high",
+                    "impact": "unknown",
+                    "recommendation": "Try to verify the contract source code manually or rerun the analysis."
+                })
+                logger.warning("Static analysis failed", context={"message": item.get("message")})
+
+        # ✅ Proceed only if valid dangerous functions exist
         if dangerous_functions:
             func_names = [f.get('name', 'unknown') for f in dangerous_functions]
             func_severities = [f.get('severity', 'medium') for f in dangerous_functions]
             func_descriptions = [f.get('message', '') for f in dangerous_functions if 'message' in f]
-            
-            # Log the dangerous functions found
+
             logger.warning("Dangerous functions detected in contract",
-                         context={
-                             "count": len(dangerous_functions),
-                             "functions": func_names,
-                             "severities": func_severities
-                         })
-            
-            # Calculate penalty based on severity of functions
+                        context={
+                            "count": len(dangerous_functions),
+                            "functions": func_names,
+                            "severities": func_severities
+                        })
+
             severity_penalty = {
                 'critical': -30,
                 'high': -20,
                 'medium': -10,
                 'low': -5
             }
-            
-            # Use the highest severity penalty
+
             max_severity = max(func_severities, key=lambda x: ['low', 'medium', 'high', 'critical'].index(x.lower()))
             penalty = severity_penalty.get(max_severity.lower(), -10)
-            
+
             adjustment = _apply_score_adjustment(
                 amount=penalty,
                 reason=f"Critical functions detected (severity: {max_severity})",
@@ -128,19 +150,18 @@ def calculate_risk_score(
                     "applied_penalty": penalty
                 }
             )
-            
-            alert_msg = f"{len(dangerous_functions)} critical functions detected (highest severity: {max_severity})"
+
             alerts.append({
                 "type": "critical_functions",
                 "severity": max_severity,
-                "message": alert_msg,
+                "message": f"{len(dangerous_functions)} critical functions detected (highest severity: {max_severity})",
                 "details": {
                     "functions": func_names,
                     "severities": func_severities,
                     "descriptions": func_descriptions
                 }
             })
-            
+
             risks.append({
                 "type": "critical_functions",
                 "description": f"Critical functions found: {', '.join(func_descriptions)}",
@@ -148,7 +169,7 @@ def calculate_risk_score(
                 "impact": "high",
                 "recommendation": "Review and audit these functions carefully before interacting with the contract."
             })
-            
+
             logger.warning(
                 "Critical functions detected in contract",
                 context={

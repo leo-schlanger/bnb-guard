@@ -864,8 +864,3 @@ def fetch_token_metadata(token_address: str) -> TokenMetadata:
         })
         raise ConnectionError(f"❌ Blockchain error: {str(e)}") from e
         
-    except Exception as e:
-        _handle_metadata_failure(token_address, e, {
-            "time_elapsed_seconds": f"{time.time() - start_time:.2f}s"
-        })
-        raise Exception(f"❌ Unexpected error: {str(e)}") from e

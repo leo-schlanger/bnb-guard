@@ -1,4 +1,3 @@
-import logging
 from typing import Dict, Optional, Any
 
 from app.core.utils.logger import get_logger
@@ -7,7 +6,6 @@ from app.core.analyzers.static_analyzer import analyze_static
 from app.core.analyzers.dynamic_analyzer import analyze_dynamic
 from app.core.analyzers.onchain_analyzer import analyze_onchain
 from app.core.utils.scoring import calculate_risk_score
-from app.core.interfaces.analyzer import AnalysisResult
 
 logger = get_logger(__name__)
 
@@ -88,14 +86,30 @@ async def analyze_token(token_address: str, lp_token_address: Optional[str] = No
 
         # Static Analysis
         logger.debug("Performing static analysis...", context={"token_address": token_address})
-        static_alerts = analyze_static(source)
-        logger.debug(
-            "Static analysis completed",
-            context={
-                "token_address": token_address,
-                "alerts": len(static_alerts.get("issues", []))
+        static_alerts = {}
+        try:
+            static_alerts = analyze_static(source)
+        except Exception as e:
+            logger.warning("Static analysis skipped due to error", context={"error": str(e), "token_address": token_address})
+            static_alerts = {
+                "functions": [{
+                    "type": "analysis_error",
+                    "message": f"Error during static analysis: {str(e)}",
+                    "severity": "critical"
+                }],
+                "owner": {
+                    "renounced": False
+                },
+                "dangerous_functions_found": [],
+                "dangerous_modifiers_found": [],
+                "total_dangerous_matches": 0,
+                "has_mint": False,
+                "has_blacklist": False,
+                "has_set_fee": False,
+                "has_only_owner": False,
+                "has_pause": False
             }
-        )
+
 
         # Dynamic Analysis
         logger.debug("Performing dynamic analysis...")
@@ -195,8 +209,8 @@ async def analyze_token(token_address: str, lp_token_address: Optional[str] = No
         # Get top holders
         top_holders = onchain_alerts.get("top_holders", {}).get("holders", [])
         
-        # Get risks
-        risks = final.get("alerts", [])
+        # Get alerts
+        alerts = final.get("alerts", [])
         
         # Combine all results using the new from_metadata method
         try:
@@ -210,7 +224,7 @@ async def analyze_token(token_address: str, lp_token_address: Optional[str] = No
                 lp_lock=lp_lock,
                 owner=owner,
                 top_holders=top_holders,
-                risks=risks
+                alerts=alerts
             )
             
             # Verify result is valid
