@@ -1,79 +1,84 @@
+from pydantic import BaseModel, Field
+from typing import List, Literal, Optional, Dict, Any
+from datetime import datetime, timezone
 
-from pydantic import BaseModel
-from typing import List, Literal, Optional, Dict
 
 class Alert(BaseModel):
-    """Estrutura de um alerta de segurança."""
     type: str
     message: str
     severity: Literal['info', 'low', 'medium', 'high', 'critical']
+    details: Optional[Dict[str, Any]] = None
 
-class ScoreDetail(BaseModel):
-    value: int
-    details: List[str]
-
-class HoneypotAudit(BaseModel):
-    """Informações sobre possível honeypot."""
-    is_honeypot: bool
-    buy_success: bool
-    sell_success: bool
-    high_tax: bool
-    tax_discrepancy: bool
-    error: Optional[str]
-
-class FeesAudit(BaseModel):
-    """Informações sobre taxas e slippage."""
-    buy: float
-    sell: float
-    buy_slippage: float
-    sell_slippage: float
-    buy_mutable: bool
-    sell_mutable: bool
-
-class LPLockAudit(BaseModel):
-    locked: bool
-    locked_percentage: float
-    unlock_date: Optional[str]
-
-class OwnerAudit(BaseModel):
-    renounced: bool
-    functions: List[str]
-
-class Holder(BaseModel):
-    address: str
-    percent: float
-
-class TopHoldersAudit(BaseModel):
-    top_1_percent: float
-    top_10_percent: float
-    top_50_percent: float
-    holders: List[Holder]
-
-class TokenHistory(BaseModel):
-    address: str
-    creation_date: str
-    score: int
-
-class DeployerAudit(BaseModel):
-    address: str
-    token_history: List[TokenHistory]
 
 class RiskDetail(BaseModel):
     type: str
     description: str
-    severity: str
+    severity: Literal['low', 'medium', 'high', 'critical']
+    impact: Optional[str] = None
+    recommendation: Optional[str] = None
+    owner_address: Optional[str] = None
+    details: Optional[Dict[str, Any]] = None
+
+
+class ScoreBreakdown(BaseModel):
+    base_score: int
+    adjustments: List[Dict[str, Any]]
+    final_score: int
+
+
+class AnalysisSection(BaseModel):
+    static: Dict[str, Any]
+    dynamic: Dict[str, Any]
+    onchain: Dict[str, Any]
+
+
+class AuditError(BaseModel):
+    type: str
+    message: str
+
 
 class AuditResponse(BaseModel):
+    status: Literal["completed", "error"]
+    timestamp: str
     token_address: str
-    name: str
-    symbol: str
-    supply: float
-    score: ScoreDetail
-    honeypot: HoneypotAudit
-    fees: FeesAudit
-    lp_lock: LPLockAudit
-    owner: OwnerAudit
-    critical_functions: List[Alert] = []
-    top_holders: TopHoldersAudit
-    deployer: DeployerAudit
-    risks: List[RiskDetail]
+    lp_token_address: Optional[str] = None
+    score: int
+    grade: str
+    analysis: AnalysisSection
+    alerts: List[Alert] = Field(default_factory=list)
+    risks: List[RiskDetail] = Field(default_factory=list)
+    score_breakdown: ScoreBreakdown
+    error: Optional[AuditError] = None
+
+    @classmethod
+    def create_error_response(cls, token_address: str, error_message: str, lp_token_address: str = None):
+        return cls(
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            status="error",
+            token_address=token_address,
+            lp_token_address=lp_token_address,
+            score=0,
+            grade="F",
+            analysis=AnalysisSection(
+                static={},
+                dynamic={},
+                onchain={}
+            ),
+            alerts=[],
+            risks=[
+                RiskDetail(
+                    type="critical",
+                    description=error_message,
+                    severity="critical"
+                )
+            ],
+            score_breakdown=ScoreBreakdown(
+                base_score=0,
+                adjustments=[],
+                final_score=0
+            ),
+            error=AuditError(
+                type="VerificationError",
+                message=error_message
+            )
+        )
