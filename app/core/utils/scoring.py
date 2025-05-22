@@ -14,25 +14,28 @@ class RiskScoreError(Exception):
     """Custom exception for risk score calculation errors."""
     pass
 
+def get_risk_meter(score: int) -> str:
+    """
+    Risk Level Meter:
+    🟢: Low risk (>= 80)
+    🟡: Moderate risk (65-79)
+    🟠: High risk (50-64)
+    🔴: Critical risk (< 50)
+    """
+    if score >= 80:
+        return "🟢 Low risk"
+    elif score >= 65:
+        return "🟡 Moderate risk"
+    elif score >= 50:
+        return "🟠 High risk"
+    else:
+        return "🔴 Critical risk"
+
 def calculate_risk_score(
     static_alerts: Dict[str, Any],
     dynamic_alerts: Dict[str, Any],
     onchain_alerts: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """
-    Calculate a comprehensive risk score based on static, dynamic, and on-chain analysis.
-    
-    Args:
-        static_alerts: Results from static code analysis
-        dynamic_alerts: Results from dynamic analysis (simulations)
-        onchain_alerts: Results from on-chain analysis
-        
-    Returns:
-        Dictionary containing the risk score, grade, and detailed risk breakdown
-        
-    Raises:
-        RiskScoreError: If there's an error in the scoring process
-    """
     start_time = time.time()
     token_address = static_alerts.get("token_address", "unknown")
     logger.info("Starting risk score calculation", 
@@ -43,7 +46,6 @@ def calculate_risk_score(
                    "has_onchain_alerts": bool(onchain_alerts)
                })
     
-    # Log detailed input data for debugging
     logger.debug("Risk score calculation input data",
                 context={
                     "static_alerts_keys": list(static_alerts.keys()),
@@ -57,21 +59,17 @@ def calculate_risk_score(
         warnings = []
         risks = []
         risk_factors = []
-        
-        # Track score adjustments for transparency
+
         score_breakdown = {
             "base_score": score,
             "adjustments": [],
             "final_score": score
         }
-        
+
         def _apply_score_adjustment(amount: int, reason: str, risk_type: str, 
                                  severity: str, details: Optional[Dict] = None):
-            """Helper function to apply score adjustments consistently."""
             nonlocal score
-            score = max(MIN_SCORE, score + amount)  # Ensure score doesn't go below 0
-            
-            # Log the adjustment
+            score = max(MIN_SCORE, score + amount)
             adjustment = {
                 "amount": amount,
                 "reason": reason,
@@ -80,16 +78,10 @@ def calculate_risk_score(
             }
             if details:
                 adjustment["details"] = details
-                
             score_breakdown["adjustments"].append(adjustment)
-            
-            # Update final score in breakdown
             score_breakdown["final_score"] = score
-            
             return adjustment
         
-        # 🎯 Critical Functions Analysis
-        # 🎯 Filter only real function alerts, exclude internal error entries
         raw_static_functions = static_alerts.get("functions", [])
 
         dangerous_functions = [
@@ -97,7 +89,6 @@ def calculate_risk_score(
             if f.get("type") not in ["analysis_error", "source_code"]
         ]
 
-        # 🛑 Handle static analysis failure separately
         for item in raw_static_functions:
             if item.get("type") == "analysis_error":
                 alerts.append({
@@ -115,7 +106,6 @@ def calculate_risk_score(
                 })
                 logger.warning("Static analysis failed", context={"message": item.get("message")})
 
-        # ✅ Proceed only if valid dangerous functions exist
         if dangerous_functions:
             func_names = [f.get('name', 'unknown') for f in dangerous_functions]
             func_severities = [f.get('severity', 'medium') for f in dangerous_functions]
@@ -179,7 +169,6 @@ def calculate_risk_score(
                 }
             )
 
-        # 👑 Owner Analysis
         owner_info = static_alerts.get("owner", {})
         if not owner_info.get("renounced", False):
             owner_address = owner_info.get("address", "unknown")
@@ -191,11 +180,10 @@ def calculate_risk_score(
                 details={"owner_address": owner_address}
             )
             
-            alert_msg = f"Contract ownership not renounced (owner: {owner_address})"
             alerts.append({
                 "type": "ownership_not_renounced",
                 "severity": "high",
-                "message": alert_msg,
+                "message": f"Contract ownership not renounced (owner: {owner_address})",
                 "details": {"owner_address": owner_address}
             })
             
@@ -208,8 +196,7 @@ def calculate_risk_score(
                 "owner_address": owner_address
             })
             
-            logger.warning(
-                "Contract ownership not renounced",
+            logger.warning("Contract ownership not renounced",
                 context={
                     "token_address": token_address,
                     "owner_address": owner_address,
@@ -220,9 +207,7 @@ def calculate_risk_score(
             logger.debug("Contract ownership is renounced",
                        context={"token_address": token_address})
 
-        # 💸 Fee Analysis
         fees = dynamic_alerts.get("fees", {})
-        # 🔒 LP Lock Check
         lp_info = onchain_alerts.get("lp_info", {})
         is_locked = lp_info.get("locked", False)
         locked_percent = lp_info.get("percent_locked", 0)
@@ -235,7 +220,7 @@ def calculate_risk_score(
                        "unlock_date": unlock_date
                    })
         
-        if not is_locked or locked_percent < 90:  # Consider <90% as not properly locked
+        if not is_locked or locked_percent < 90:
             penalty = -20 if not is_locked else -10
             reason = "Liquidity not locked" if not is_locked else f"Only {locked_percent}% of liquidity is locked"
             
@@ -252,12 +237,10 @@ def calculate_risk_score(
                 }
             )
             
-            alert_msg = ("Liquidity is not locked, high risk of rug pull" if not is_locked
-                       else f"Only {locked_percent}% of liquidity is locked")
             alerts.append({
                 "type": "lp_not_locked",
                 "severity": "high" if not is_locked else "medium",
-                "message": alert_msg,
+                "message": "Liquidity is not locked" if not is_locked else f"Only {locked_percent}% of liquidity is locked",
                 "details": {
                     "is_locked": is_locked,
                     "locked_percent": locked_percent,
@@ -265,12 +248,9 @@ def calculate_risk_score(
                 }
             })
 
-        # 💸 Fee Analysis
-        fees = dynamic_alerts.get("fees", {})
         buy_fee = fees.get("buy", 0)
         sell_fee = fees.get("sell", 0)
         
-        # Log fee information
         logger.info("Analyzing transaction fees",
                    context={
                        "buy_fee_percent": buy_fee,
@@ -278,8 +258,7 @@ def calculate_risk_score(
                        "fee_mutable": fees.get("mutable", False)
                    })
         
-        # Penalize high fees
-        if buy_fee > 10 or sell_fee > 10:  # More than 10% is high
+        if buy_fee > 10 or sell_fee > 10:
             penalty = -15
             fee_details = {
                 "buy_fee_percent": buy_fee,
@@ -303,50 +282,31 @@ def calculate_risk_score(
                 "details": fee_details
             })
 
-        # 🕵️ Honeypot Analysis
         honeypot_info = dynamic_alerts.get("honeypot", {})
         is_honeypot = honeypot_info.get("is_honeypot", False)
         
         if is_honeypot:
             logger.critical("Honeypot detected in token contract",
-                          context={
-                              "buy_success": honeypot_info.get("buy_success", False),
-                              "sell_success": honeypot_info.get("sell_success", False),
-                              "high_tax": honeypot_info.get("high_tax", False),
-                              "tax_discrepancy": honeypot_info.get("tax_discrepancy", False)
-                          })
+                          context=honeypot_info)
             
-            penalty = -50  # Major penalty for honeypot
+            penalty = -50
             _apply_score_adjustment(
                 amount=penalty,
                 reason="Token appears to be a honeypot",
                 risk_type="honeypot",
                 severity="critical",
-                details={
-                    "buy_success": honeypot_info.get("buy_success", False),
-                    "sell_success": honeypot_info.get("sell_success", False),
-                    "high_tax": honeypot_info.get("high_tax", False),
-                    "tax_discrepancy": honeypot_info.get("tax_discrepancy", False),
-                    "applied_penalty": penalty
-                }
+                details={**honeypot_info, "applied_penalty": penalty}
             )
             
             alerts.append({
                 "type": "honeypot",
                 "severity": "critical",
                 "message": "Token appears to be a honeypot (cannot sell after buying)",
-                "details": {
-                    "buy_success": honeypot_info.get("buy_success", False),
-                    "sell_success": honeypot_info.get("sell_success", False),
-                    "high_tax": honeypot_info.get("high_tax", False),
-                    "tax_discrepancy": honeypot_info.get("tax_discrepancy", False)
-                }
+                "details": honeypot_info
             })
 
-        # 🏆 Final Score and Grade
-        score = max(0, min(100, score))  # Ensure score is between 0-100
+        score = max(0, min(100, score))
         
-        # Determine grade
         if score >= 90:
             grade = "A"
         elif score >= 80:
@@ -360,7 +320,6 @@ def calculate_risk_score(
         
         analysis_duration = time.time() - start_time
         
-        # Log final score calculation
         logger.info("Final risk score calculated",
                   context={
                       "final_score": int(round(score)),
@@ -371,21 +330,20 @@ def calculate_risk_score(
                       "analysis_duration_seconds": analysis_duration
                   })
         
-        # Log detailed score breakdown for debugging
         logger.debug("Score breakdown",
                     context={
                         "base_score": score_breakdown.get("base_score"),
                         "final_score": int(round(score)),
                         "adjustments": [
                             {"reason": adj.get("reason"), "amount": adj.get("amount"), "type": adj.get("type")}
-                            for adj in score_breakdown.get("adjustments", [])[:10]  # Limit to first 10 adjustments
+                            for adj in score_breakdown.get("adjustments", [])[:10]
                         ]
                     })
         
-        # Prepare final response
         result = {
             "score": int(round(score)),
             "grade": grade,
+            "risk_meter": get_risk_meter(int(round(score))),
             "alerts": alerts,
             "warnings": warnings,
             "risks": risks,

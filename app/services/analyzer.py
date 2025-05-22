@@ -164,14 +164,16 @@ async def analyze_token(token_address: str, lp_token_address: Optional[str] = No
             context={
                 "token_address": token_address,
                 "score": final["score"],
-                "grade": final["grade"]
+                "grade": final["grade"],
+                "risk_meter": final["risk_meter"]
             }
         )
 
         # Prepare score object
         score = {
             "value": final["score"],
-            "label": final["grade"]
+            "label": final["grade"],
+            "risk_meter": final["risk_meter"]
         }
         
         # Prepare honeypot object

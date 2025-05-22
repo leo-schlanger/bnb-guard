@@ -124,7 +124,8 @@ async def audit_token(token_address: str, lp_token_address: Optional[str] = None
         logger.info("Audit completed", context={
             "token_address": token_address,
             "score": score_data.get("score"),
-            "grade": score_data.get("grade")
+            "grade": score_data.get("grade"),
+            "risk_meter": score_data.get("risk_meter")
         })
 
         # Format response using Pydantic model
@@ -135,6 +136,7 @@ async def audit_token(token_address: str, lp_token_address: Optional[str] = None
             lp_token_address=lp_token_address,
             score=score_data["score"],
             grade=score_data["grade"],
+            risk_meter=score_data["risk_meter"],
             analysis=AnalysisSection(
                 static=static_alerts,
                 dynamic=dynamic_alerts,

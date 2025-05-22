@@ -25,6 +25,7 @@ class AuditResult(TypedDict, total=False):
     lp_token_address: Optional[str]
     score: int
     grade: str
+    risk_meter: str
     analysis: AuditAnalysis
     alerts: List[Dict[str, Any]]
     risks: List[Dict[str, Any]]

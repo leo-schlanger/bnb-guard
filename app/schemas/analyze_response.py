@@ -28,6 +28,7 @@ class Holder(BaseModel):
 class Score(BaseModel):
     value: int = 0
     label: str = "Unknown"
+    risk_meter: str = "Unknown"
 
 class Honeypot(BaseModel):
     is_honeypot: bool = False

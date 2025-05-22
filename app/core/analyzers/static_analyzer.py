@@ -1,6 +1,5 @@
 import re
-import traceback
-from typing import List, Dict, Optional, Any
+from typing import Dict, Any
 from app.core.interfaces.analyzer import Alert
 from app.core.utils.logger import get_logger
 

@@ -44,6 +44,7 @@ class AuditResponse(BaseModel):
     lp_token_address: Optional[str] = None
     score: int
     grade: str
+    risk_meter: str
     analysis: AnalysisSection
     alerts: List[Alert] = Field(default_factory=list)
     risks: List[RiskDetail] = Field(default_factory=list)
@@ -59,6 +60,7 @@ class AuditResponse(BaseModel):
             lp_token_address=lp_token_address,
             score=0,
             grade="F",
+            risk_meter="🔴 Critical risk",
             analysis=AnalysisSection(
                 static={},
                 dynamic={},
