@@ -1,6 +1,5 @@
 import re
 from typing import Dict, Any
-from app.core.interfaces.analyzer import Alert
 from app.core.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -14,6 +13,15 @@ DANGEROUS_FUNCTIONS = [
 DANGEROUS_MODIFIERS = [
     "onlyOwner", "admin", "isOwner", "hasRole"
 ]
+
+def create_alert(title: str, description: str, severity: str) -> Dict[str, Any]:
+    """Create an alert dictionary."""
+    return {
+        "title": title,
+        "description": description,
+        "severity": severity,
+        "type": "security_alert"
+    }
 
 def analyze_static(source_code: str) -> Dict[str, Any]:
     logger.info("Starting static analysis of contract")
@@ -92,18 +100,18 @@ def analyze_static(source_code: str) -> Dict[str, Any]:
     try:
         logger.debug("Generating alerts...")
         for func in result["dangerous_functions_found"]:
-            result["functions"].append(Alert(
+            result["functions"].append(create_alert(
                 title=f"Dangerous Function: {func}",
                 description=f"The contract contains a potentially dangerous function: {func}",
                 severity="high"
-            ).dict())
+            ))
 
         for mod in result["dangerous_modifiers_found"]:
-            result["functions"].append(Alert(
+            result["functions"].append(create_alert(
                 title=f"Dangerous Modifier: {mod}",
                 description=f"The contract uses a potentially dangerous modifier: {mod}",
                 severity="medium"
-            ).dict())
+            ))
     except Exception as e:
         logger.error("Error during alert generation", exc_info=True)
 

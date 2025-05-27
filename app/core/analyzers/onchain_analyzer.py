@@ -2,12 +2,14 @@ import requests
 import time
 import traceback
 from typing import Dict, Any, List, Optional
-from config import BSCSCAN_API_KEY
-from app.core.interfaces.analyzer import Alert, TokenMetadata
+from app.core.config import settings
 from app.core.utils.logger import get_logger
 
 # Initialize logger
 logger = get_logger(__name__)
+
+# Get API key from settings
+BSCSCAN_API_KEY = settings.BSCSCAN_API_KEY
 
 # Known locker contracts
 KNOWN_LOCKERS = [
@@ -23,7 +25,7 @@ _API_CACHE = {}
 # Cache expiration time in seconds (5 minutes)
 _CACHE_EXPIRY = 300
 
-def analyze_onchain(metadata: TokenMetadata) -> Dict[str, Any]:
+def analyze_onchain(metadata: Dict[str, Any]) -> Dict[str, Any]:
     """
     Analyze on-chain data for potential risks and suspicious activities.
     
@@ -967,81 +969,48 @@ def is_lp_locked(lp_token_address: str) -> bool:
         ValueError: If the provided LP token address is invalid
     """
     start_time = time.time()
-    logger.info(
-        "Starting LP lock verification",
-        context={"lp_token_address": lp_token_address}
-    )
-    
-    if not lp_token_address:
-        logger.warning("No LP token address provided for lock check")
-        return False
-        
-    if not isinstance(lp_token_address, str) or not lp_token_address.startswith("0x") or len(lp_token_address) != 42:
-        logger.error("Invalid LP token address format", 
-                    context={"lp_token_address": lp_token_address})
+    logger.info("Starting LP lock verification", context={"lp_token_address": lp_token_address})
+
+    if not lp_token_address or not isinstance(lp_token_address, str) or not lp_token_address.startswith("0x") or len(lp_token_address) != 42:
+        logger.error("Invalid LP token address format", context={"lp_token_address": lp_token_address})
         raise ValueError("Invalid LP token address format")
-    
+
     try:
-        # Normalize address for comparison
-        lp_token_address = lp_token_address.lower()
-        
-        # Check against known locker contracts
-        known_lockers = [x.lower() for x in KNOWN_LOCKERS]
-        if lp_token_address in known_lockers:
-            locker_name = {
-                "0x1fe80fc86816b778b529d3c2a3830e44a6519a25": "PinkLock",
-                "0x88b8e5f5b052f9b38b3b7f529d6bd0a09c84c3a0": "Mudra Locker",
-                "0x407993575c91ce7643a4d4ccacc9a98c36ee1bbe": "Unicrypt",
-                "0x17e00383a843a9922bca3b280c0ade9f8ba48449": "Team.Finance"
-            }.get(lp_token_address, "Unknown Locker")
-            
-            logger.info(
-                "LP is locked with a known locker service",
-                context={
-                    "lp_token_address": lp_token_address,
-                    "locker_name": locker_name,
-                    "verification_method": "known_lockers_list"
-                }
-            )
-            return True
-            
-        # TODO: Add more sophisticated verification methods:
-        # 1. Check token's balance in known locker contracts
-        # 2. Query token's lock events
-        # 3. Check token's owner/controller for known locker patterns
-        
-        logger.info(
-            "LP is not locked with a known locker service",
-            context={
-                "lp_token_address": lp_token_address,
-                "verification_method": "known_lockers_list",
-                "known_lockers_checked": known_lockers
-            }
-        )
+        lp_token_address = Web3.to_checksum_address(lp_token_address)
+        lp_contract = w3.eth.contract(address=lp_token_address, abi=ERC20_ABI)
+
+        for locker in KNOWN_LOCKERS:
+            try:
+                locker_checksum = Web3.to_checksum_address(locker)
+                balance = lp_contract.functions.balanceOf(locker_checksum).call()
+
+                if balance > 0:
+                    logger.info(
+                        "LP tokens are locked in known locker",
+                        context={"lp_token_address": lp_token_address, "locker": locker, "balance": balance}
+                    )
+                    return True
+
+            except Exception as locker_error:
+                logger.warning(
+                    "Error checking locker balance",
+                    context={"lp_token_address": lp_token_address, "locker": locker, "error": str(locker_error)}
+                )
+                continue  # check next locker
+
+        logger.info("LP token not found in any known lockers", context={"lp_token_address": lp_token_address})
         return False
-        
+
     except Exception as e:
-        error_msg = f"Error checking LP lock status: {str(e)}"
         logger.error(
-            error_msg,
-            context={
-                "lp_token_address": lp_token_address,
-                "error_type": type(e).__name__,
-                "traceback": traceback.format_exc(),
-                "verification_failed": True
-            },
+            "Error checking LP lock via balanceOf",
+            context={"lp_token_address": lp_token_address, "error": str(e)},
             exc_info=True
         )
-        # Default to False on error to be safe
         return False
+
     finally:
-        # Log the completion of the check
-        duration = time.time() - start_time
         logger.debug(
-            "Completed LP lock verification",
-            context={
-                "lp_token_address": lp_token_address,
-                "duration_seconds": round(duration, 4),
-                "timestamp": time.time()
-            }
+            "Completed LP lock check with balanceOf",
+            context={"lp_token_address": lp_token_address, "duration_seconds": round(time.time() - start_time, 4)}
         )

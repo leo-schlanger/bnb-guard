@@ -7,48 +7,58 @@ registers routers, middleware, and exception handlers.
 import os
 import sys
 import logging
+import time
+import traceback
 from datetime import datetime
 from pathlib import Path
 from contextlib import asynccontextmanager
+from typing import Dict, Any
 
 # Add project root to path first
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-# Import and setup logging first
-from app.core.logging_config import setup_logging
+# Import configuration and logging
+from app.core.config import settings
+from app.core.utils.logger import setup_logging, get_logger
+
+# Setup logging
 logger = setup_logging()
 
 # Get log level from environment
 log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
-logger.setLevel(log_level)
+logger.level = log_level  # Use property instead of setLevel
 logger.info(f"Logging level set to: {log_level}")
 logger.info(f"Initializing BNBGuard API (log level: {log_level})")
 
 # Import FastAPI dependencies
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.openapi.utils import get_openapi
+import uvicorn
+from typing import Dict, Any
 
 # Import routers
-from app.routes.analyze import router as analyze_router
-from app.routes.audit import router as audit_router
 from app.routes.health import router as health_router
+from app.routes.analysis import router as analysis_router
+from app.routes.audits import router as audits_router
 
 # Constants
 API_PREFIX = "/api/v1"
-APP_VERSION = "1.0.0"
+APP_VERSION = "2.0.0"
 
 # API metadata
 tags_metadata = [
     {
         "name": "analysis",
-        "description": "Token analysis operations for risk assessment and metrics.",
+        "description": "Simple analysis for end users - quick safety checks and user-friendly results.",
     },
     {
-        "name": "audit",
-        "description": "Comprehensive security audits for token contracts.",
+        "name": "audits", 
+        "description": "Comprehensive audits for developers - detailed technical analysis and recommendations.",
     },
     {
         "name": "health",
@@ -134,7 +144,7 @@ def create_application() -> FastAPI:
     """
     app = FastAPI(
         title="BNBGuard API",
-        description="Automated risk analysis for BNB Chain tokens",
+        description="Automated risk analysis for BNB Chain tokens and pools",
         version=APP_VERSION,
         openapi_tags=tags_metadata,
         docs_url="/docs",
@@ -163,7 +173,7 @@ app = create_application()
 # Request/response logging middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Middleware to log all incoming requests and responses.
+    """Enhanced middleware to log all incoming requests and responses.
     
     Args:
         request: The incoming request
@@ -175,75 +185,49 @@ async def log_requests(request: Request, call_next):
     # Generate request ID for tracking
     request_id = f"{int(datetime.now().timestamp())}-{request.client.host if request.client else 'unknown'}"
     
-    # Log incoming request
-    logger.info(
-        "Request received",
-        context={
-            "request_id": request_id,
-            "method": request.method,
-            "url": str(request.url),
-            "client": request.client.host if request.client else "unknown"
-        }
-    )
+    # Extract client info
+    client_ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "unknown")
     
-    # Log detailed request info at debug level
-    logger.debug(
-        "Request details",
-        context={
-            "request_id": request_id,
-            "method": request.method,
-            "url": str(request.url),
-            "headers": dict(request.headers),
-            "query_params": dict(request.query_params),
-            "path_params": request.path_params,
-            "client": request.client.host if request.client else "unknown"
-        }
-    )
+    # Start timing
+    start_time = datetime.now()
     
     try:
         # Process the request
-        start_time = datetime.now()
         response = await call_next(request)
-        process_time = (datetime.now() - start_time).total_seconds() * 1000
+        process_time = (datetime.now() - start_time).total_seconds()
         
-        # Log completed request
-        logger.info(
-            "Request completed",
-            context={
-                "request_id": request_id,
-                "method": request.method,
-                "url": str(request.url),
-                "status_code": response.status_code,
-                "process_time_ms": round(process_time, 2)
-            }
+        # Log the API request using the new structured method
+        logger.api_request(
+            method=request.method,
+            url=str(request.url),
+            status_code=response.status_code,
+            duration=process_time,
+            client_ip=client_ip
         )
         
-        # Log detailed response info at debug level
-        logger.debug(
-            "Response details",
-            context={
-                "request_id": request_id,
-                "method": request.method,
-                "url": str(request.url),
-                "status_code": response.status_code,
-                "response_headers": dict(response.headers)
-            }
-        )
+        # Log additional details at debug level
+        logger.debug("Request details", {
+            "request_id": request_id,
+            "user_agent": user_agent[:50] + "..." if len(user_agent) > 50 else user_agent,
+            "query_params": dict(request.query_params),
+            "path_params": request.path_params
+        })
         
         return response
         
     except Exception as e:
+        process_time = (datetime.now() - start_time).total_seconds()
+        
         # Log request processing failures
-        logger.error(
-            "Request processing failed",
-            context={
-                "request_id": request_id,
-                "method": request.method,
-                "url": str(request.url),
-                "error": str(e)
-            },
-            exc_info=True
-        )
+        logger.failure("Request processing failed", {
+            "request_id": request_id,
+            "method": request.method,
+            "url": str(request.url),
+            "client_ip": client_ip,
+            "error": str(e),
+            "duration_ms": round(process_time * 1000, 2)
+        }, exc_info=True)
         raise
 
 def register_middleware(app: FastAPI) -> None:
@@ -260,9 +244,11 @@ def register_routers(app: FastAPI) -> None:
     Args:
         app: FastAPI application instance
     """
-    # API v1 routes
-    app.include_router(analyze_router, prefix=f"{API_PREFIX}/analyze")
-    app.include_router(audit_router, prefix=f"{API_PREFIX}/audit")
+    # New API routes
+    app.include_router(analysis_router, prefix=f"{API_PREFIX}/analysis")
+    app.include_router(audits_router, prefix=f"{API_PREFIX}/audits")
+    
+    # System routes
     app.include_router(health_router, prefix=f"{API_PREFIX}/health")
     
     # Root endpoint
@@ -278,14 +264,46 @@ def register_routers(app: FastAPI) -> None:
             "name": "BNBGuard API",
             "version": APP_VERSION,
             "status": "operational",
+            "description": "Automated risk analysis for BNB Chain tokens and pools",
             "documentation": {
                 "swagger": "/docs",
                 "redoc": "/redoc"
             },
-            "endpoints": [
-                {"path": f"{API_PREFIX}/analyze/{{token_address}}", "methods": ["GET"], "description": "Analyze token contract"},
-                {"path": f"{API_PREFIX}/audit/{{token_address}}", "methods": ["GET"], "description": "Full token audit"},
-                {"path": f"{API_PREFIX}/health", "methods": ["GET"], "description": "Health check"}
+            "api_structure": {
+                "analysis": {
+                    "description": "Simple analysis for end users",
+                    "endpoints": [
+                        f"{API_PREFIX}/analysis/tokens/{{address}}",
+                        f"{API_PREFIX}/analysis/tokens/{{address}}/quick",
+                        f"{API_PREFIX}/analysis/pools/{{address}}",
+                        f"{API_PREFIX}/analysis/pools/{{address}}/quick"
+                    ]
+                },
+                "audits": {
+                    "description": "Comprehensive audits for developers",
+                    "endpoints": [
+                        f"{API_PREFIX}/audits/tokens/{{address}}",
+                        f"{API_PREFIX}/audits/tokens/{{address}}/security",
+                        f"{API_PREFIX}/audits/pools/{{address}}",
+                        f"{API_PREFIX}/audits/pools/{{address}}/liquidity"
+                    ]
+                }
+            },
+            "features": [
+                "Simple token analysis",
+                "Comprehensive token audits", 
+                "Pool liquidity analysis",
+                "Pool economic analysis",
+                "Batch processing",
+                "Comparative analysis",
+                "Real-time safety checks"
+            ],
+            "integrations": [
+                "Wallet integrations",
+                "Trading bots",
+                "DeFi applications",
+                "Web applications",
+                "AI agents"
             ]
         }
 

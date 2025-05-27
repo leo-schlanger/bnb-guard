@@ -1,162 +1,352 @@
-<p align="center">
-  <img src="./assets/logo.png" alt="BNBGuard Logo" width="200"/>
-</p>
+# 🛡️ BNBGuard API
 
+**Automated risk analysis for BNB Chain tokens and pools**
 
-<p align="center">
-  🛡️ Automated Security for the BNB Smart Chain — detect risks before they detect you.
-</p>
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/your-repo/bnbguard)
+[![Python](https://img.shields.io/badge/python-3.11+-green.svg)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-red.svg)](https://fastapi.tiangolo.com)
+[![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
+## 🎯 Overview
 
-## 🚀 Overview
+BNBGuard is a comprehensive API for analyzing the security and risk of tokens and liquidity pools on the BNB Smart Chain. It provides two distinct analysis modes:
 
-**BNBGuard** is an automated security analysis platform focused exclusively on the **Binance Smart Chain (BSC)**. It was created to protect investors, developers, and regular users from scams, malicious contracts, honeypots, and fraudulent tokens.
+- **🔍 Simple Analysis** - Quick safety checks for end users
+- **🔬 Comprehensive Audits** - Detailed technical analysis for developers
 
-Hundreds of new tokens are launched on BSC every day - many with malicious intent and no audit. BNBGuard addresses this issue by providing in-depth, accessible security analysis through a browser extension or API.
+## ✨ Features
 
-## 🛠️ Setup and Installation
+### 🪙 Token Analysis
+- **Honeypot Detection** - Identify tokens that prevent selling
+- **Security Scoring** - 0-100 safety score with risk levels
+- **Contract Verification** - Check if source code is verified
+- **Ownership Analysis** - Detect dangerous ownership patterns
+- **Fee Analysis** - Identify high trading fees
+
+### 🏊 Pool Analysis
+- **Liquidity Assessment** - Evaluate pool depth and stability
+- **Rug Pull Detection** - Check for liquidity lock status
+- **Economic Analysis** - Calculate APR/APY and impermanent loss
+- **Market Health** - Assess trading patterns and volume
+
+### 🚀 Advanced Features
+- **Batch Processing** - Analyze multiple assets simultaneously
+- **Comparative Analysis** - Side-by-side asset comparison
+- **Real-time Data** - Live blockchain data integration
+- **Structured Logging** - Comprehensive request tracking
+
+## 🏗️ Architecture
+
+### 📊 Analysis Endpoints (`/api/v1/analysis`)
+**Target Audience:** End users, wallets, trading bots
+
+```
+GET  /api/v1/analysis/tokens/{address}        # Simple token analysis
+GET  /api/v1/analysis/tokens/{address}/quick  # Ultra-fast safety check
+POST /api/v1/analysis/tokens/batch            # Batch token analysis
+GET  /api/v1/analysis/pools/{address}         # Simple pool analysis
+GET  /api/v1/analysis/pools/{address}/quick   # Ultra-fast pool check
+POST /api/v1/analysis/pools/batch             # Batch pool analysis
+```
+
+### 🔬 Audit Endpoints (`/api/v1/audits`)
+**Target Audience:** Developers, security researchers, DeFi protocols
+
+```
+GET  /api/v1/audits/tokens/{address}                    # Comprehensive token audit
+GET  /api/v1/audits/tokens/{address}/security           # Security-focused audit
+GET  /api/v1/audits/tokens/{address}/recommendations    # Improvement suggestions
+POST /api/v1/audits/tokens/compare                      # Token comparison
+GET  /api/v1/audits/pools/{address}                     # Comprehensive pool audit
+GET  /api/v1/audits/pools/{address}/liquidity           # Liquidity-focused audit
+GET  /api/v1/audits/pools/{address}/economics           # Economic analysis
+POST /api/v1/audits/pools/compare                       # Pool comparison
+```
+
+## 🚀 Quick Start
 
 ### Prerequisites
+- Python 3.11+
+- Node.js (for BSC interaction)
+- Git
 
-- Python 3.8+
-- Pip (Python package manager)
-- BscScan API key (get it from [BscScan](https://bscscan.com/apis))
-
-### Environment Setup
+### Installation
 
 1. **Clone the repository**
-   ```bash
-   git clone https://github.com/leo-schlanger/bnb-guard.git
-   cd bnb-guard
-   ```
-
-2. **Create and activate a virtual environment**
-   ```bash
-   # Linux/MacOS
-   python -m venv venv
-   source venv/bin/activate
-
-   # Windows
-   python -m venv venv
-   .\venv\Scripts\activate
-   ```
-
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Configure environment variables**
-   - Copy `.env.example` to `.env`
-   - Update variables as needed, especially `BSCSCAN_API_KEY`
-   ```bash
-   cp .env.example .env
-   ```
-
-### Running the Application
-
-1. **Start the development server**
-   ```bash
-   uvicorn app.main:app --reload
-   ```
-
-2. **Access the interactive documentation**
-   - Swagger UI: http://localhost:8000/docs
-   - ReDoc: http://localhost:8000/redoc
-
-### Testing the API
-
-You can test the endpoints using `curl` or tools like Postman/Insomnia:
-
 ```bash
-# Token analysis
-curl -X 'GET' \
-  'http://localhost:8000/api/v1/analyze/0x0000000000000000000000000000000000000000' \
-  -H 'accept: application/json'
-
-# Token audit
-curl -X 'GET' \
-  'http://localhost:8000/api/v1/audit/0x0000000000000000000000000000000000000000' \
-  -H 'accept: application/json'
+git clone https://github.com/your-repo/bnbguard.git
+cd bnbguard
 ```
 
-## 🏗️ Project Structure
-
-```
-bnb-guard/
-├── app/
-│   ├── core/           # Core configurations and utilities
-│   ├── models/         # Pydantic data models
-│   ├── routes/         # API route definitions
-│   ├── schemas/        # Request/response schemas
-│   ├── services/       # Business logic and services
-│   └── main.py         # Application entry point
-├── tests/              # Automated tests
-├── .env.example       # Environment variables example
-├── requirements.txt    # Project dependencies
-└── README.md          # Documentation
+2. **Install dependencies**
+```bash
+pip install -r requirements.txt
 ```
 
----
+3. **Set up environment**
+```bash
+cp env.example .env
+# Edit .env with your configuration
+```
 
-## 🎯 Purpose
+4. **Run the server**
+```bash
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
 
-- **Reduce financial losses** from scams and fraud.
-- **Democratize security** with automated, understandable reports.
-- **Strengthen the ecosystem** by empowering users and honest developers.
+5. **Access the API**
+- **Swagger UI:** http://localhost:8000/docs
+- **ReDoc:** http://localhost:8000/redoc
+- **API Root:** http://localhost:8000/
 
----
+## 📖 Usage Examples
 
-## ⚙️ How It Works
+### 🔍 Simple Token Analysis
+```javascript
+// Quick safety check for wallets
+const response = await fetch('/api/v1/analysis/tokens/0x.../quick');
+const data = await response.json();
 
-BNBGuard performs automated multi-layer analysis for newly created or user-submitted token contracts.
+if (data.risk_level === 'CRITICAL') {
+  alert('⚠️ High-risk token detected!');
+}
+```
 
-### 🔍 Metadata Collection
-- Name, symbol, total supply
-- Creator (deployer) address
-- Deployment date and LP pair
-- Verified source code via BscScan API
+### 🤖 Batch Analysis for Trading Bots
+```python
+import asyncio
+import aiohttp
 
-### 🧠 Static Analysis
-- Detection of dangerous functions: `mint()`, `setFee()`, `pause()`, `blacklist()`
-- Ownership renouncement check (`renounceOwnership()`)
-- Abusive or modifiable buy/sell fees
+async def analyze_tokens(tokens):
+    async with aiohttp.ClientSession() as session:
+        async with session.post('/api/v1/analysis/tokens/batch', 
+                               json=tokens) as response:
+            return await response.json()
 
-### 🔄 Dynamic Analysis
-- Real buy/sell simulation via PancakeSwap
-- Honeypot detection
-- Slippage manipulation and tax traps
+# Filter safe tokens
+tokens = ['0x...', '0x...', '0x...']
+results = await analyze_tokens(tokens)
+safe_tokens = [t for t in results['results'] if t['safety_score'] > 70]
+```
 
-### 🔗 On-Chain Analysis
-- Deployer history (how many tokens created?)
-- Token holder distribution
-- Liquidity lock verification (LP lock)
+### 🔬 Comprehensive Security Audit
+```javascript
+// Detailed audit for developers
+const audit = await fetch('/api/v1/audits/tokens/0x.../security');
+const data = await audit.json();
 
-### 📊 Risk Scoring
-- Each red flag adds to a weighted score
-- Final output: **Risk Score (0-100)** with visual warnings
-- Verified projects may receive an audit NFT/SBT badge
+const criticalIssues = data.critical_vulnerabilities;
+const recommendations = data.security_recommendations;
+```
 
----
+### 💰 Pool Economic Analysis
+```python
+# Liquidity provider analysis
+import requests
 
-## 🧩 Components
+response = requests.get('/api/v1/audits/pools/0x.../economics')
+data = response.json()
 
-- **Browser extension** (like Wallet Guard)
-- **Public/private API** for real-time security insights
-- **PRO dashboard** with token monitoring and alerts
-- **NFT/SBT Seal** for audited tokens
-- **CLI script** for devs and integrators
+estimated_apr = data['fee_metrics']['estimated_apr']
+il_risk = data['impermanent_loss_analysis']['risk_level']
 
----
+print(f"Estimated APR: {estimated_apr}%")
+print(f"Impermanent Loss Risk: {il_risk}")
+```
 
-## 💡 Core Values
+## 📊 Response Examples
 
-- **Transparency:** traceable and auditable data
-- **Accessibility:** security analysis for all users
-- **Community-first:** promote good projects, block malicious intent
-- **Innovation:** automation and AI where humans fall short
+### Simple Analysis Response
+```json
+{
+  "status": "success",
+  "safety_score": 85,
+  "risk_level": "LOW",
+  "recommendation": "✅ RELATIVELY SAFE - Standard risks apply",
+  "token_info": {
+    "name": "Example Token",
+    "symbol": "EXT",
+    "verified": true
+  },
+  "quick_checks": {
+    "honeypot": false,
+    "high_fees": false,
+    "ownership_renounced": true
+  },
+  "analysis_duration_ms": 2500
+}
+```
 
----
+### Comprehensive Audit Response
+```json
+{
+  "status": "success",
+  "security_assessment": {
+    "overall_score": 72.5,
+    "security_grade": "B"
+  },
+  "vulnerabilities": [
+    {
+      "type": "ownership_control",
+      "severity": "medium",
+      "description": "Owner has excessive control",
+      "recommendation": "Implement timelock or renounce ownership"
+    }
+  ],
+  "recommendations": [
+    {
+      "category": "security",
+      "priority": "high",
+      "title": "Implement Ownership Controls",
+      "implementation": "Add timelock contract or multi-sig"
+    }
+  ]
+}
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+```bash
+# API Configuration
+PORT=8000
+HOST=0.0.0.0
+LOG_LEVEL=INFO
+
+# Blockchain Configuration
+BSC_RPC_URL=https://bsc-dataseed.binance.org/
+WEB3_TIMEOUT=30
+MAX_RETRIES=3
+
+# Rate Limiting
+ANALYSIS_RATE_LIMIT=100  # requests per minute
+AUDIT_RATE_LIMIT=20      # requests per minute
+```
+
+### Performance Targets
+- **Quick Checks:** < 3 seconds
+- **Simple Analysis:** < 10 seconds
+- **Comprehensive Audits:** < 45 seconds
+- **Batch Processing:** < 30 seconds (10 items)
+
+## 🧪 Testing
+
+### Run Tests
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=app
+
+# Run specific test file
+pytest tests/test_analysis.py
+```
+
+### API Testing
+```bash
+# Test analysis endpoints
+curl -X GET "http://localhost:8000/api/v1/analysis/tokens/0x.../quick"
+
+# Test audit endpoints
+curl -X GET "http://localhost:8000/api/v1/audits/tokens/0x..."
+
+# Health check
+curl -X GET "http://localhost:8000/api/v1/health"
+```
+
+## 🔌 Integration Examples
+
+### Wallet Integration
+```javascript
+class BNBGuardWallet {
+  async checkTokenSafety(tokenAddress) {
+    const response = await fetch(`/api/v1/analysis/tokens/${tokenAddress}/quick`);
+    const data = await response.json();
+    
+    return {
+      isSafe: data.safety_score > 70,
+      riskLevel: data.risk_level,
+      recommendation: data.recommendation
+    };
+  }
+}
+```
+
+### DeFi Protocol Integration
+```solidity
+// Smart contract integration example
+interface IBNBGuard {
+    function getTokenSafetyScore(address token) external view returns (uint256);
+    function isPoolSafe(address pool) external view returns (bool);
+}
+
+contract SafeDeFi {
+    IBNBGuard public bnbGuard;
+    
+    modifier onlySafeTokens(address token) {
+        require(bnbGuard.getTokenSafetyScore(token) > 70, "Token not safe");
+        _;
+    }
+}
+```
+
+## 📈 Monitoring & Logging
+
+### Health Endpoints
+```bash
+# Analysis service health
+GET /api/v1/analysis/health
+
+# Audit service health  
+GET /api/v1/audits/health
+
+# Overall system health
+GET /api/v1/health
+```
+
+### Logging Structure
+```json
+{
+  "timestamp": "2025-05-27T20:00:00Z",
+  "level": "INFO",
+  "service": "token_analysis",
+  "message": "Token analysis completed",
+  "context": {
+    "token_address": "0x...",
+    "safety_score": 85,
+    "duration_ms": 2500
+  }
+}
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Development Setup
+```bash
+# Install development dependencies
+pip install -r requirements-dev.txt
+
+# Run pre-commit hooks
+pre-commit install
+
+# Run linting
+flake8 app/
+black app/
+
+# Run type checking
+mypy app/
+```
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🧑‍💻 About Us
 
@@ -172,88 +362,14 @@ Full-stack developer with over 12 years of experience in software engineering. S
 - [LinkedIn](https://www.linkedin.com/in/leo-schlanger-226467192/)
 - [GitHub](https://github.com/leo-schlanger)
   
-  
----
 
-## 🔌 API Endpoints
+## 🙏 Acknowledgments
 
-| Method | Route       | Description                                 |
-|--------|-------------|---------------------------------------------|
-| POST   | `/analyze`  | Submits a token address for risk scoring    |
-| POST   | `/audit`    | Detailed contract analysis & feedback       |
+- **FastAPI** - Modern web framework
+- **Web3.py** - Ethereum library
+- **BSC** - Binance Smart Chain
+- **Community** - Contributors and users
 
 ---
 
-## 🧪 Running Tests
-
-```bash
-pytest --cov=.
-```
-
----
-
-## 📈 Roadmap
-
-### ✅ Implemented Features
-- [x] Core API infrastructure with FastAPI
-- [x] Token metadata fetching and parsing
-- [x] Static contract analysis
-  - [x] Detection of dangerous functions
-  - [x] Ownership and access control analysis
-  - [x] Basic vulnerability detection
-- [x] Dynamic analysis
-  - [x] Buy/sell simulation
-  - [x] Tax and fee analysis
-  - [x] Honeypot detection
-- [x] On-chain analysis
-  - [x] Deployer history check
-  - [x] Token holder distribution
-  - [x] LP lock verification
-- [x] Risk scoring system
-  - [x] Weighted risk calculation
-  - [x] Severity classification
-
-### 🔄 In Progress
-- [ ] Enhanced error handling and logging
-- [ ] Rate limiting and API key management
-- [ ] Comprehensive test coverage
-
-### 📅 Planned Features
-- [ ] Advanced pattern detection
-  - [ ] Rug pull indicators
-  - [ ] Token minting analysis
-  - [ ] Fee manipulation detection
-- [ ] Performance optimization
-  - [ ] Caching mechanisms
-  - [ ] Async processing
-  - [ ] Batch processing support
-- [ ] Enhanced security features
-  - [ ] Input validation
-  - [ ] Request signing
-  - [ ] IP-based rate limiting
-- [ ] Documentation
-  - [ ] API reference
-  - [ ] Integration guides
-  - [ ] Example implementations
-
----
-
-## 🤝 Contributing
-
-Want to help secure the BNB ecosystem? Contributions are welcome!
-
-1. Fork the repository
-2. Create a feature branch: `feature/your-feature`
-3. Submit a Pull Request 🚀
-
----
-
-## 📄 License
-
-Distributed under the MIT License. See `LICENSE` for details.
-
----
-
-<p align="center">
-  Built with 💛 for BNB Chain — by devs who care about a safer ecosystem.
-</p>
+**⚡ Built with ❤️ for the DeFi community**

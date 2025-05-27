@@ -1,6 +1,6 @@
 import pytest
+from typing import Dict, Any
 from app.core.utils.scoring import calculate_risk_score
-from app.core.interfaces.analyzer import Alert
 
 
 def test_high_risk_token():

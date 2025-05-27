@@ -1,3 +1,5 @@
+"""Metadata utilities for fetching token information from BSCScan API."""
+
 import json
 import time
 from decimal import Decimal
@@ -10,9 +12,12 @@ from web3.exceptions import (
     ContractLogicError,
 )
 
-from app.core.interfaces.analyzer import TokenMetadata
 from app.core.utils.logger import get_logger
-from config import BSCSCAN_API_KEY, BSC_RPC_URL
+from app.core.config import settings
+
+# Get configuration values
+BSCSCAN_API_KEY = settings.BSCSCAN_API_KEY
+BSC_RPC_URL = settings.BSC_RPC_URL
 
 logger = get_logger(__name__)
 
@@ -663,7 +668,7 @@ def _validate_token_address(token_address: str) -> str:
     return checksum_address
 
 
-def _create_metadata_response(token_address: str, token_details: Dict[str, Any]) -> TokenMetadata:
+def _create_metadata_response(token_address: str, token_details: Dict[str, Any]) -> Dict[str, Any]:
     """
     Create a standardized metadata response.
     
@@ -672,7 +677,7 @@ def _create_metadata_response(token_address: str, token_details: Dict[str, Any])
         token_details: Dictionary containing token details
         
     Returns:
-        TokenMetadata: Standardized token metadata
+        Dictionary containing token metadata
     """
     metadata = {
         "address": token_address,
@@ -755,7 +760,7 @@ def _handle_metadata_failure(
         logger.debug("Request ID for error correlation", context={"request_id": request_id})
 
 
-def fetch_token_metadata(token_address: str) -> TokenMetadata:
+def fetch_token_metadata(token_address: str) -> Dict[str, Any]:
     """
     Fetch comprehensive token metadata from BscScan and BSC node.
     
@@ -767,7 +772,7 @@ def fetch_token_metadata(token_address: str) -> TokenMetadata:
         token_address: The token contract address (must be a valid BSC address)
         
     Returns:
-        TokenMetadata: A dictionary containing token metadata
+        Dictionary containing token metadata
         
     Raises:
         ValueError: For invalid inputs or contract errors

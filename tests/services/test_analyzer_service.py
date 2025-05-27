@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock, call
 from fastapi import HTTPException
 from app.services.analyzer import analyze_token
-from app.core.interfaces.analyzer import AnalysisResult
+from typing import Dict, Any
 
 @pytest.fixture
 def mock_metadata():

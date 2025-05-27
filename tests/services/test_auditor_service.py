@@ -1,8 +1,16 @@
+"""
+Tests for the auditor service.
+
+This module contains unit tests for the auditor service functionality,
+including audit execution, result formatting, and error handling.
+"""
+
 import os
 import sys
 import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock, call, AsyncMock
 from fastapi import HTTPException
+from typing import Dict, Any
 
 # Adiciona o diretório raiz ao path para garantir que os imports funcionem
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
@@ -26,7 +34,37 @@ except ImportError as e:
     print(f"=== Conteúdo do diretório services: {os.listdir(os.path.join(root_dir, 'app', 'services'))}")
     raise
 
-from app.core.interfaces.analyzer import AnalysisResult
+from app.core.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+# Test data
+VALID_TOKEN_ADDRESS = "0x1234567890123456789012345678901234567890"
+INVALID_TOKEN_ADDRESS = "invalid_address"
+
+# Mock analysis result
+MOCK_ANALYSIS_RESULT: Dict[str, Any] = {
+    "name": "ScamToken",
+    "symbol": "SCAM",
+    "decimals": 18,
+    "totalSupply": 1000000.0,  # Note que é totalSupply, não total_supply
+    "owner": "0x0000000000000000000000000000000000000000",
+    "status": "1",
+    "message": "OK",
+    "SourceCode": "pragma solidity ^0.8.0;\n\ncontract ScamToken {\n    string public name = \"ScamToken\";\n    string public symbol = \"SCAM\";\n    uint8 public decimals = 18;\n    uint256 public totalSupply = 1000000 * 10**18;\n    \n    function mint(address to, uint256 amount) public {\n        // Implementação fictícia\n    }\n}",
+    "ABI": "[{\"constant\":true,\"inputs\":[],\"name\":\"name\",\"outputs\":[{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"symbol\",\"outputs\":[{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}]",
+    "functions": ["mint"],
+    "buy_tax": 25.0,
+    "sell_tax": 25.0,
+    "buy_mutable": True,
+    "sell_mutable": True,
+    "has_blacklist": True,
+    "has_mint": True,
+    "lp_info": {"locked": False},
+    "deployer_address": "0xBAD",
+    "deployer_token_count": 6,
+    "holders": [{"address": "0x1", "percent": 30.0}]
+}
 
 @pytest.fixture
 def mock_metadata():
