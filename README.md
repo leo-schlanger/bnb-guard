@@ -350,8 +350,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🧑‍💻 About Us
 
-### 👨‍💻 Bruno Weber — Co-Founder & COO
-Experienced web and backend developer passionate about security and distributed systems. As COO of BNBGuard, Bruno leads strategy, product vision, and ecosystem integrations to bring automated security to the BNB Chain.
+### 👨‍💻 Bruno Weber — Co-Founder & CPO
+Experienced web and backend developer passionate about security and distributed systems. As CPO of BNBGuard, Bruno leads product strategy, user experience, and feature development to deliver automated security solutions tailored to the BNB Chain ecosystem.
 
 - [LinkedIn](https://www.linkedin.com/in/brunolweber/)
 - [GitHub](https://github.com/Bruno-Weber)
