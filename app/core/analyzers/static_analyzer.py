@@ -66,18 +66,34 @@ def analyze_static(source_code: str) -> Dict[str, Any]:
         logger.debug("Checking for dangerous functions...")
         for func in DANGEROUS_FUNCTIONS:
             if re.search(fr'function\s+{func}\s*\(', source_code, re.IGNORECASE):
-                result["dangerous_functions_found"].append(func)
-                result["total_dangerous_matches"] += 1
-                logger.debug(f"Found dangerous function: {func}")
-
+                # Classify severity based on function
                 if func == "mint":
+                    severity = "high"
                     result["has_mint"] = True
-                elif func == "blacklist":
-                    result["has_blacklist"] = True
-                elif "fee" in func.lower():
+                elif func in ["blacklist", "pause", "unpause"]:
+                    severity = "high" if func == "blacklist" else "medium"
+                    if func == "blacklist":
+                        result["has_blacklist"] = True
+                    elif "pause" in func.lower():
+                        result["has_pause"] = True
+                elif "fee" in func.lower() or "tax" in func.lower():
+                    severity = "medium"
                     result["has_set_fee"] = True
-                elif "pause" in func.lower():
-                    result["has_pause"] = True
+                elif func in ["transferOwnership", "renounceOwnership"]:
+                    severity = "medium"
+                else:
+                    severity = "medium"
+                
+                # Adicionar como objeto com severidade
+                result["dangerous_functions_found"].append({
+                    "name": func,
+                    "type": "dangerous_function",
+                    "severity": severity,
+                    "message": f"Dangerous function '{func}' found in contract"
+                })
+                result["total_dangerous_matches"] += 1
+                logger.debug(f"Found dangerous function: {func} (severity: {severity})")
+                
     except Exception as e:
         logger.error("Error during dangerous function check", exc_info=True)
 
@@ -101,9 +117,9 @@ def analyze_static(source_code: str) -> Dict[str, Any]:
         logger.debug("Generating alerts...")
         for func in result["dangerous_functions_found"]:
             result["functions"].append(create_alert(
-                title=f"Dangerous Function: {func}",
-                description=f"The contract contains a potentially dangerous function: {func}",
-                severity="high"
+                title=f"Dangerous Function: {func['name']}",
+                description=f"The contract contains a potentially dangerous function: {func['name']}",
+                severity=func['severity']
             ))
 
         for mod in result["dangerous_modifiers_found"]:

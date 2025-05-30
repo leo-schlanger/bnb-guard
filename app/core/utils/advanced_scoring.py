@@ -328,13 +328,13 @@ class AdvancedTokenScorer:
         if static_analysis.get("has_mint", False):
             factors.append(RiskFactor(
                 category=RiskCategory.OWNERSHIP,
-                severity=SeverityLevel.MEDIUM,
-                weight=0.3,
-                score_impact=10,
+                severity=SeverityLevel.HIGH,
+                weight=0.4,
+                score_impact=20,
                 title="Mint Function Present",
-                description="Contract can create new tokens",
-                recommendation="Inflation risk - check mint controls",
-                confidence=0.7,
+                description="Contract can create new tokens indefinitely - high inflation risk",
+                recommendation="CAUTION: Unlimited token creation possible - verify mint controls and governance",
+                confidence=0.9,
                 evidence={"has_mint": True}
             ))
         

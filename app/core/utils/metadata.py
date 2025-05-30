@@ -679,17 +679,41 @@ def _create_metadata_response(token_address: str, token_details: Dict[str, Any])
     Returns:
         Dictionary containing token metadata
     """
+    # Get basic token info
+    name = token_details.get("name", "Unknown")
+    symbol = token_details.get("symbol", "UNKNOWN")
+    decimals = token_details.get("decimals", 18)
+    total_supply = token_details.get("totalSupply", 0)
+    raw_total_supply = token_details.get("rawTotalSupply", "0")
+    
+    # Try to get deployer address if not present
+    contract_creator = "Unknown"
+    try:
+        from app.core.analyzers.onchain_analyzer import get_deployer_address
+        contract_creator = get_deployer_address(token_address)
+    except Exception:
+        pass  # Keep as Unknown if we can't fetch it
+    
     metadata = {
+        # New format (lowercase keys)
         "address": token_address,
-        "name": token_details.get("name", "Unknown"),
-        "symbol": token_details.get("symbol", "UNKNOWN"),
-        "decimals": token_details.get("decimals", 18),
-        "totalSupply": token_details.get("totalSupply", 0),
-        "rawTotalSupply": token_details.get("rawTotalSupply", "0"),
+        "name": name,
+        "symbol": symbol,
+        "decimals": decimals,
+        "totalSupply": total_supply,
+        "rawTotalSupply": raw_total_supply,
         "is_verified": True,
         "verification_status": "verified",
         "contract_created": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "source": "bscscan_and_web3"
+        "source": "bscscan_and_web3",
+        
+        # Legacy format (capitalized keys for compatibility)
+        "TokenName": name,
+        "TokenSymbol": symbol,
+        "Decimals": str(decimals),
+        "TotalSupply": str(total_supply),
+        "ContractCreator": contract_creator,
+        "CompilerVersion": "Unknown"  # Would need BSCScan API to get this
     }
     
     logger.debug(
@@ -697,7 +721,9 @@ def _create_metadata_response(token_address: str, token_details: Dict[str, Any])
         context={
             "token_address": token_address,
             "symbol": metadata["symbol"],
-            "is_verified": metadata["is_verified"]
+            "name": metadata["name"],
+            "is_verified": metadata["is_verified"],
+            "contract_creator": contract_creator
         }
     )
     

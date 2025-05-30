@@ -351,7 +351,7 @@ class TokenAnalysisService:
                 score -= 5
             
             if safety_checks.get("mint_function", False):
-                score -= 5
+                score -= 15  # Increased penalty for mint function
             
             if safety_checks.get("pause_function", False):
                 score -= 5
@@ -491,6 +491,10 @@ class TokenAnalysisService:
         if not safety_checks.get("can_buy", True):
             risks.append("🚨 Buying blocked")
         
+        # Mint function is critical when ownership is not renounced
+        if safety_checks.get("mint_function", False) and not safety_checks.get("ownership_renounced", False):
+            risks.append("🚨 Mint function with owner control - Inflation risk")
+        
         return risks
     
     def _extract_warnings(self, safety_checks: Dict[str, Any]) -> List[str]:
@@ -509,7 +513,10 @@ class TokenAnalysisService:
             warnings.append("🔓 Ownership not renounced")
         
         if safety_checks.get("mint_function", False):
-            warnings.append("🪙 Has mint function")
+            if safety_checks.get("ownership_renounced", False):
+                warnings.append("⚠️ Has mint function (owner renounced)")
+            else:
+                warnings.append("🪙 Has mint function - owner can inflate supply")
         
         if safety_checks.get("pause_function", False):
             warnings.append("⏸️ Has pause function")

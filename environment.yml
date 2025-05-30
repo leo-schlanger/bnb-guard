@@ -1,0 +1,57 @@
+name: bnbguard
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Python e ferramentas básicas
+  - python=3.11
+  - pip
+  
+  # Dependências essenciais via conda
+  - requests=2.31
+  - python-dateutil=2.8
+  - pytz=2023.3
+  
+  # Dependências via pip (versões compatíveis testadas)
+  - pip:
+    # Core FastAPI (versões compatíveis)
+    - fastapi==0.104.1
+    - uvicorn[standard]==0.24.0
+    - python-dotenv==1.0.0
+    - python-multipart==0.0.6
+    - anyio>=3.7.1,<4.0.0
+    
+    # Pydantic (versões compatíveis)
+    - pydantic==2.5.0
+    - pydantic-settings==2.1.0
+    
+    # Web3 stack (versões compatíveis)
+    - web3==6.15.1
+    - eth-typing==3.5.2
+    - eth-utils==2.3.0
+    - eth-abi==4.2.1
+    - eth-account==0.10.0
+    - parsimonious==0.10.0
+    
+    # HTTP clients
+    - httpx==0.25.2
+    - aiohttp==3.9.1
+    
+    # Utils compatíveis  
+    - python-slugify==8.0.1
+    
+    # Logging
+    - python-json-logger==2.0.4
+    - loguru==0.7.2
+    
+    # Testing essencial
+    - pytest==7.4.3
+    - pytest-asyncio==0.21.1
+    
+    # Development tools
+    - black==23.11.0
+    - isort==5.12.0
+    - mypy==1.7.0
+    - flake8==6.1.0
+    - watchfiles==0.21.0
+    - ipython==8.17.2 

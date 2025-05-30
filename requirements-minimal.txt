@@ -1,0 +1,23 @@
+# Dependências mínimas e compatíveis para BNBGuard
+# Apenas pacotes que funcionam sem compilação
+
+# Core Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-dotenv==1.0.0
+python-multipart==0.0.6
+
+# Pydantic (versões compatíveis)
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# HTTP Client
+httpx==0.25.2
+requests==2.31.0
+
+# Utils Básicos
+python-dateutil==2.8.2
+python-slugify==8.0.1
+
+# Logging
+loguru==0.7.2 
