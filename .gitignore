@@ -29,7 +29,6 @@ htmlcov/
 # Uvicorn reload/cache
 *.pid
 *.db
-*.json
 *.log
 
 # Cache

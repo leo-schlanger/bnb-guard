@@ -322,38 +322,47 @@ if os.getenv("ENV", "development") == "development":
         Returns:
             Dictionary with test results
         """
-        results = {
-            "debug": "Debug message logged",
-            "info": "Info message logged",
-            "warning": "Warning message logged",
-            "error": "Error message logged",
-            "critical": "Critical message logged",
-        }
-        
-        # Log messages at different levels
-        logger.debug("This is a debug message")
-        logger.info("This is an info message")
-        logger.warning("This is a warning message")
-        logger.error("This is an error message")
-        logger.critical("This is a critical message")
-        
-        # Log with context
-        logger.info(
-            "Test log with context",
-            extra={
-                "context": {
-                    "user_id": "test_user",
-                    "action": "test_log",
-                    "status": "success"
-                }
+        try:
+            results = {
+                "debug": "Debug message logged",
+                "info": "Info message logged", 
+                "warning": "Warning message logged",
+                "error": "Error message logged",
+                "critical": "Critical message logged",
             }
-        )
-        
-        return {
-            "status": "success",
-            "message": "Test logs generated",
-            "results": results,
-            "timestamp": datetime.utcnow().isoformat(),
-            "log_file": "logs/app.log",
-            "log_level": logging.getLevelName(logger.getEffectiveLevel())
-        }
+            
+            # Log messages at different levels using context parameter
+            logger.debug("This is a debug message")
+            logger.info("This is an info message")
+            logger.warning("This is a warning message") 
+            logger.error("This is an error message")
+            logger.critical("This is a critical message")
+            
+            # Log with context - using the correct method signature
+            logger.info("Test log with context", {
+                "user_id": "test_user",
+                "action": "test_log", 
+                "status": "success"
+            })
+            
+            return {
+                "status": "success",
+                "message": "Test logs generated successfully",
+                "results": results,
+                "timestamp": datetime.now().isoformat(),
+                "log_file": "logs/app.log",
+                "log_level": "INFO",  # Simplified to avoid potential issues
+                "logger_type": type(logger).__name__
+            }
+            
+        except Exception as e:
+            # Fallback with basic logging if our custom logger fails
+            import logging as std_logging
+            std_logging.error(f"Test log endpoint failed: {str(e)}")
+            
+            return {
+                "status": "error",
+                "message": f"Test logs failed: {str(e)}",
+                "timestamp": datetime.now().isoformat(),
+                "error_type": type(e).__name__
+            }

@@ -1,0 +1,1010 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2024-12-19T00:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "req_group_root",
+      "_type": "request_group",
+      "parentId": "wrk_main",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "name": "BNBGuard API v2.0.0 - Testes Completos",
+      "description": "Coleção completa de testes para a API BNBGuard v2.0.0",
+      "environment": {
+        "base_url": "http://localhost:8000",
+        "api_prefix": "/api/v1",
+        "example_token": "0x55d398326f99059fF775485246999027B3197955",
+        "example_pool": "0x16b9a82891338f9bA80E2D6970FddA79D1eb0daE"
+      },
+      "environmentPropertyOrder": {
+        "&": ["base_url", "api_prefix", "example_token", "example_pool"]
+      },
+      "metaSortKey": -1000000000
+    },
+    {
+      "_id": "wrk_main",
+      "_type": "workspace",
+      "parentId": null,
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "name": "BNBGuard API v2.0.0",
+      "description": "API para análise de riscos em tokens e pools da BNB Chain - Versão 2.0.0"
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "parentId": "wrk_main",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:8000",
+        "api_prefix": "/api/v1",
+        "example_token": "0x55d398326f99059fF775485246999027B3197955",
+        "example_pool": "0x16b9a82891338f9bA80E2D6970FddA79D1eb0daE"
+      },
+      "dataPropertyOrder": {
+        "&": ["base_url", "api_prefix", "example_token", "example_pool"]
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 1000000000
+    },
+
+    {
+      "_id": "fld_root",
+      "_type": "request_group",
+      "parentId": "req_group_root",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "name": "1. 🏠 Root & Info",
+      "description": "Endpoints de informação geral da API",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -900000000
+    },
+    {
+      "_id": "req_root_info",
+      "_type": "request",
+      "parentId": "fld_root",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}/",
+      "name": "Informações da API v2.0.0",
+      "description": "Obtém informações gerais sobre a API versão 2.0.0",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -900000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_docs",
+      "_type": "request",
+      "parentId": "fld_root",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}/docs",
+      "name": "Documentação Swagger v2.0.0",
+      "description": "Acessa a documentação interativa da API v2.0.0",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -850000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+
+    {
+      "_id": "fld_health",
+      "_type": "request_group",
+      "parentId": "req_group_root",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "name": "2. 🏥 Health Check",
+      "description": "Endpoints de monitoramento da saúde do sistema",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -800000000
+    },
+    {
+      "_id": "req_health_basic",
+      "_type": "request",
+      "parentId": "fld_health",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/health",
+      "name": "Health Check Básico",
+      "description": "Verifica o status básico da API",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -800000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_health_detailed",
+      "_type": "request",
+      "parentId": "fld_health",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/health/detailed",
+      "name": "Health Check Detalhado",
+      "description": "Verifica status detalhado do sistema",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -750000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_health_services",
+      "_type": "request",
+      "parentId": "fld_health",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/health/services",
+      "name": "Status dos Serviços Externos",
+      "description": "Verifica status dos serviços externos (BSC Node, BscScan)",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -700000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_health_logs",
+      "_type": "request",
+      "parentId": "fld_health",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/health/logs",
+      "name": "Status do Sistema de Logs",
+      "description": "Verifica o funcionamento do sistema de logs",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -650000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+
+    {
+      "_id": "fld_analysis",
+      "_type": "request_group",
+      "parentId": "req_group_root",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "name": "3. 📊 Analysis (Usuários Finais)",
+      "description": "Análises simples para usuários finais",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -600000000
+    },
+    {
+      "_id": "fld_analysis_tokens",
+      "_type": "request_group",
+      "parentId": "fld_analysis",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "name": "3.1 🪙 Tokens",
+      "description": "Análise de tokens",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -600000000
+    },
+    {
+      "_id": "req_analysis_token_simple",
+      "_type": "request",
+      "parentId": "fld_analysis_tokens",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/analysis/tokens/{{ _.example_token }}",
+      "name": "Análise Simples de Token",
+      "description": "Análise simples de token para usuários finais",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -600000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_analysis_token_quick",
+      "_type": "request",
+      "parentId": "fld_analysis_tokens",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/analysis/tokens/{{ _.example_token }}/quick",
+      "name": "Verificação Rápida de Token",
+      "description": "Verificação ultra-rápida de segurança do token",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -550000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_analysis_tokens_batch",
+      "_type": "request",
+      "parentId": "fld_analysis_tokens",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/analysis/tokens/batch",
+      "name": "Análise em Lote - Tokens (CORRIGIDO)",
+      "description": "Análise de múltiplos tokens (máx 10) - formato correto",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "[\n  \"0x55d398326f99059fF775485246999027B3197955\",\n  \"0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56\",\n  \"0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d\"\n]"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -500000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+
+    {
+      "_id": "fld_analysis_pools",
+      "_type": "request_group",
+      "parentId": "fld_analysis",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "name": "3.2 🏊 Pools",
+      "description": "Análise de pools de liquidez",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -550000000
+    },
+    {
+      "_id": "req_analysis_pool_simple",
+      "_type": "request",
+      "parentId": "fld_analysis_pools",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/analysis/pools/{{ _.example_pool }}",
+      "name": "Análise Simples de Pool",
+      "description": "Análise simples de pool para usuários finais",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [
+        {
+          "name": "token_address",
+          "value": "{{ _.example_token }}",
+          "description": "Endereço do token para contexto adicional",
+          "disabled": true
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -450000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_analysis_pool_quick",
+      "_type": "request",
+      "parentId": "fld_analysis_pools",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/analysis/pools/{{ _.example_pool }}/quick",
+      "name": "Verificação Rápida de Pool",
+      "description": "Verificação ultra-rápida de segurança do pool",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -400000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_analysis_pools_batch",
+      "_type": "request",
+      "parentId": "fld_analysis_pools",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/analysis/pools/batch",
+      "name": "Análise em Lote - Pools (CORRIGIDO)",
+      "description": "Análise de múltiplos pools (máx 5) - formato correto",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "[\n  \"0x16b9a82891338f9bA80E2D6970FddA79D1eb0daE\",\n  \"0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16\",\n  \"0x7EFaEf62fDdCCa950418312c6C91Aef321375A00\"\n]"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -350000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_analysis_health",
+      "_type": "request",
+      "parentId": "fld_analysis",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/analysis/health",
+      "name": "Health Check - Analysis",
+      "description": "Verifica o status do serviço de análise",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -300000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+
+    {
+      "_id": "fld_audits",
+      "_type": "request_group",
+      "parentId": "req_group_root",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "name": "4. 🔍 Audits (Desenvolvedores)",
+      "description": "Auditorias completas para desenvolvedores",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -200000000
+    },
+    {
+      "_id": "fld_audits_tokens",
+      "_type": "request_group",
+      "parentId": "fld_audits",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "name": "4.1 🪙 Token Audits",
+      "description": "Auditorias completas de tokens",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -200000000
+    },
+    {
+      "_id": "req_audit_token_comprehensive",
+      "_type": "request",
+      "parentId": "fld_audits_tokens",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/audits/tokens/{{ _.example_token }}",
+      "name": "Auditoria Completa de Token",
+      "description": "Auditoria completa e detalhada do token",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -200000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_audit_token_security",
+      "_type": "request",
+      "parentId": "fld_audits_tokens",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/audits/tokens/{{ _.example_token }}/security",
+      "name": "Auditoria de Segurança",
+      "description": "Auditoria focada em segurança do token",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -150000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_audit_token_recommendations",
+      "_type": "request",
+      "parentId": "fld_audits_tokens",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/audits/tokens/{{ _.example_token }}/recommendations",
+      "name": "Recomendações de Melhoria",
+      "description": "Obtém recomendações de melhorias para o token",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -100000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+
+    {
+      "_id": "fld_audits_pools",
+      "_type": "request_group",
+      "parentId": "fld_audits",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "name": "4.2 🏊 Pool Audits",
+      "description": "Auditorias completas de pools",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -150000000
+    },
+    {
+      "_id": "req_audit_pool_comprehensive",
+      "_type": "request",
+      "parentId": "fld_audits_pools",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/audits/pools/{{ _.example_pool }}",
+      "name": "Auditoria Completa de Pool",
+      "description": "Auditoria completa e detalhada do pool",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [
+        {
+          "name": "token_address",
+          "value": "{{ _.example_token }}",
+          "description": "Endereço do token para contexto adicional",
+          "disabled": true
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -50000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_audit_pool_liquidity",
+      "_type": "request",
+      "parentId": "fld_audits_pools",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/audits/pools/{{ _.example_pool }}/liquidity",
+      "name": "Auditoria de Liquidez",
+      "description": "Auditoria focada na liquidez do pool",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 0,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_audit_pool_economics",
+      "_type": "request",
+      "parentId": "fld_audits_pools",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/audits/pools/{{ _.example_pool }}/economics",
+      "name": "Auditoria Econômica",
+      "description": "Auditoria focada nos aspectos econômicos do pool",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 50000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+
+    {
+      "_id": "fld_audits_comparison",
+      "_type": "request_group",
+      "parentId": "fld_audits",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "name": "4.3 ⚖️ Comparações",
+      "description": "Comparações entre tokens e pools",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -100000000
+    },
+    {
+      "_id": "req_audit_compare_tokens",
+      "_type": "request",
+      "parentId": "fld_audits_comparison",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/audits/tokens/compare",
+      "name": "Comparar Tokens (CORRIGIDO)",
+      "description": "Compara múltiplos tokens lado a lado (máx 5) - formato correto",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "[\n  \"0x55d398326f99059fF775485246999027B3197955\",\n  \"0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56\",\n  \"0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d\"\n]"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 100000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_audit_compare_pools",
+      "_type": "request",
+      "parentId": "fld_audits_comparison",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/audits/pools/compare",
+      "name": "Comparar Pools (CORRIGIDO + TIMEOUT)",
+      "description": "⚠️ ATENÇÃO TIMEOUT:\n1. Esta rota pode levar até 90 segundos\n2. Configure timeout no Insomnia: 120000ms (2 min)\n3. Usar pools com alta liquidez (PancakeSwap)\n4. Máximo 3 pools por comparação\n\nCompara múltiplos pools lado a lado - formato correto.",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "[\n  \"0x16b9a82891338f9bA80E2D6970FddA79D1eb0daE\",\n  \"0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16\"\n]"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 150000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_audit_health",
+      "_type": "request",
+      "parentId": "fld_audits",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/audits/health",
+      "name": "Health Check - Audits",
+      "description": "Verifica o status do serviço de auditoria",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 200000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+
+    {
+      "_id": "fld_debug",
+      "_type": "request_group",
+      "parentId": "req_group_root",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "name": "5. 🐛 Debug (Desenvolvimento)",
+      "description": "Endpoints para debug e desenvolvimento - ATENÇÃO: Apenas funciona em ambiente de desenvolvimento",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 0
+    },
+    {
+      "_id": "req_diagnose_routes",
+      "_type": "request",
+      "parentId": "fld_debug",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}/docs",
+      "name": "🔍 Verificar Documentação OpenAPI",
+      "description": "Acessa a documentação Swagger para verificar todas as rotas disponíveis e suas definições.",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": 500000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_test_invalid_token",
+      "_type": "request",
+      "parentId": "fld_debug",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/analysis/tokens/0xinvalid",
+      "name": "🧪 Testar Token Inválido",
+      "description": "Testa como a API lida com endereços de token inválidos (deve retornar erro 400).",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 750000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_test_log",
+      "_type": "request",
+      "parentId": "fld_debug",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}/test-log",
+      "name": "⚠️ Teste de Logs (ENV=development + RESTART)",
+      "description": "⚠️ ATENÇÃO: \n1. Este endpoint só funciona com ENV=development\n2. Após mudanças no código, REINICIE a API\n3. Se der erro 500, verifique os logs da aplicação\n4. Se der erro 404, verifique a variável ENV\n\nEste endpoint testa o sistema de logging personalizado.",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 1000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_test_single_pool_audit",
+      "_type": "request",
+      "parentId": "fld_debug",
+      "modified": 1702950000000,
+      "created": 1702950000000,
+      "url": "{{ _.base_url }}{{ _.api_prefix }}/audits/pools/{{ _.example_pool }}",
+      "name": "🧪 Teste Pool Individual (Diagnóstico)",
+      "description": "Testa auditoria de um pool individual antes de tentar comparação. Use para verificar se o pool é válido.",
+      "method": "GET",
+      "body": {
+        "mimeType": "",
+        "text": ""
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 800000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    }
+  ]
+} 
